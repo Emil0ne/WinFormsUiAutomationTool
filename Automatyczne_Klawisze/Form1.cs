@@ -85,9 +85,9 @@ namespace Automatyczne_Klawisze
                 rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] BŁĄD: Musisz zaznaczyć przynajmniej jedną bazę na liście!\n");
                 return;
             }
-            if (string.IsNullOrWhiteSpace(txtEnovaUser.Text) || string.IsNullOrWhiteSpace(txtEnovaPass.Text))
+            if (string.IsNullOrWhiteSpace(txtEnovaUser.Text))
             {
-                rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] BŁĄD: Wprowadź login i hasło do Enovy!\n");
+                rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] BŁĄD: Wprowadź login do Enovy!\n");
                 return;
             }
             if (string.IsNullOrWhiteSpace(txtNowyOperator.Text) || string.IsNullOrWhiteSpace(txtNoweHaslo.Text))

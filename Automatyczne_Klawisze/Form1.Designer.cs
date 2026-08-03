@@ -130,9 +130,9 @@
             label4.AutoSize = true;
             label4.Location = new Point(16, 357);
             label4.Name = "label4";
-            label4.Size = new Size(85, 15);
+            label4.Size = new Size(94, 15);
             label4.TabIndex = 6;
-            label4.Text = "Kod operatora:";
+            label4.Text = "Hasło operatora:";
             // 
             // label5
             // 
