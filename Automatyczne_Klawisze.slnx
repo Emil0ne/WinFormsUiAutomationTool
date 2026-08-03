@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/Elementy rozwiązania/">
+    <File Path=".gitignore" />
+  </Folder>
+  <Project Path="Automatyczne_Klawisze/Automatyczne_Klawisze.csproj" />
+</Solution>
