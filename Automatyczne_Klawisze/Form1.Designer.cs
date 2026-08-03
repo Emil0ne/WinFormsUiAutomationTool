@@ -163,7 +163,7 @@
             // 
             // btnStart
             // 
-            btnStart.Location = new Point(316, 525);
+            btnStart.Location = new Point(346, 525);
             btnStart.Name = "btnStart";
             btnStart.Size = new Size(232, 23);
             btnStart.TabIndex = 13;
@@ -231,7 +231,7 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(931, 560);
+            ClientSize = new Size(944, 560);
             Controls.Add(btnWybierzEnova);
             Controls.Add(txtSciezkaEnova);
             Controls.Add(label6);
