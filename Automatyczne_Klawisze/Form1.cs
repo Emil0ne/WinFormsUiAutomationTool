@@ -1,7 +1,21 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
 namespace Automatyczne_Klawisze
 {
     public partial class Form1 : Form
     {
+        // ==========================================
+        // ZMIENNE DO STEROWANIA PROCESEM
+        // ==========================================
+        private CancellationTokenSource _cts;
+        private ManualResetEventSlim _pauseEvent;
+        private bool _isPaused = false;
+
         public Form1()
         {
             InitializeComponent();
@@ -12,7 +26,7 @@ namespace Automatyczne_Klawisze
             using (OpenFileDialog openFileDialog = new OpenFileDialog())
             {
                 string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                openFileDialog.InitialDirectory = System.IO.Path.Combine(appData, "Soneta");
+                openFileDialog.InitialDirectory = Path.Combine(appData, "Soneta");
                 openFileDialog.Filter = "Pliki XML (*.xml)|*.xml|Wszystkie pliki (*.*)|*.*";
                 openFileDialog.Title = "Wybierz plik z listą baz danych Enova";
 
@@ -74,7 +88,7 @@ namespace Automatyczne_Klawisze
 
         private void btnStart_Click(object sender, EventArgs e)
         {
-            if (string.IsNullOrWhiteSpace(txtSciezkaEnova.Text) || !System.IO.File.Exists(txtSciezkaEnova.Text))
+            if (string.IsNullOrWhiteSpace(txtSciezkaEnova.Text) || !File.Exists(txtSciezkaEnova.Text))
             {
                 rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] BŁĄD: Nie wybrano prawidłowego pliku uruchomieniowego Enova (.exe)!\n");
                 return;
@@ -95,7 +109,7 @@ namespace Automatyczne_Klawisze
                 rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] BŁĄD: Podaj kod i hasło dla nowego operatora!\n");
                 return;
             }
-            if (string.IsNullOrWhiteSpace(txtSciezkaXml.Text) || !System.IO.File.Exists(txtSciezkaXml.Text))
+            if (string.IsNullOrWhiteSpace(txtSciezkaXml.Text) || !File.Exists(txtSciezkaXml.Text))
             {
                 rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] BŁĄD: Nie wybrano prawidłowego pliku XML do importu!\n");
                 return;
@@ -104,7 +118,7 @@ namespace Automatyczne_Klawisze
             List<string> bazyDoPrzetworzenia = new List<string>();
             foreach (var item in clbBazy.CheckedItems)
             {
-                bazyDoPrzetworzenia.Add(item.ToString()!);
+                bazyDoPrzetworzenia.Add(item.ToString());
             }
 
             string login = txtEnovaUser.Text;
@@ -112,17 +126,29 @@ namespace Automatyczne_Klawisze
             string nowyOp = txtNowyOperator.Text;
             string hasloOp = txtNoweHaslo.Text;
             string sciezkaXml = txtSciezkaXml.Text;
-            string sciezkaEnova = txtSciezkaEnova.Text; 
+            string sciezkaEnova = txtSciezkaEnova.Text;
 
             rtbLogi.AppendText($"\n[{DateTime.Now:HH:mm:ss}] 🚀 START AUTOMATYZACJI! Bazy do przetworzenia: {bazyDoPrzetworzenia.Count}\n");
 
-            System.Threading.Tasks.Task.Run(() =>
+            // ==========================================
+            // INICJALIZACJA KONTROLERÓW WĄTKU (STOP I PAUZA)
+            // ==========================================
+            _cts = new CancellationTokenSource();
+            _pauseEvent = new ManualResetEventSlim(true); // true = stan odblokowany (brak pauzy)
+            _isPaused = false;
+
+            // Jeśli kontrolka nazywa się inaczej, zmień tutaj "btnPauza" na swoją nazwę, np. "button2"
+            btnPauza.Text = "Pauza";
+
+            Task.Run(() =>
             {
-                EnovaAutomator.Uruchom(bazyDoPrzetworzenia, login, haslo, nowyOp, hasloOp, sciezkaXml, sciezkaEnova, (wiadomosc) =>
+                // Przekazujemy _cts.Token oraz _pauseEvent do naszej głównej metody
+                EnovaAutomator.Uruchom(bazyDoPrzetworzenia, login, haslo, nowyOp, hasloOp, sciezkaXml, sciezkaEnova, _cts.Token, _pauseEvent, (wiadomosc) =>
                 {
                     Invoke(new Action(() => rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] {wiadomosc}\n")));
 
-                    Invoke(new Action(() => {
+                    Invoke(new Action(() =>
+                    {
                         rtbLogi.SelectionStart = rtbLogi.Text.Length;
                         rtbLogi.ScrollToCaret();
                     }));
@@ -169,6 +195,48 @@ namespace Automatyczne_Klawisze
         private void rtbLogi_TextChanged(object sender, EventArgs e)
         {
 
+        }
+
+        // ==========================================
+        // OBSŁUGA PRZYCISKU PAUZY
+        // ==========================================
+        private void btnPauza_Click(object sender, EventArgs e)
+        {
+            if (_pauseEvent == null) return;
+
+            if (_isPaused)
+            {
+                _pauseEvent.Set(); // Dajemy zielone światło (Odmrażamy)
+                _isPaused = false;
+                btnPauza.Text = "Pauza";
+                rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] ▶️ WZNOWIONO AUTOMATYZACJĘ.\n");
+            }
+            else
+            {
+                _pauseEvent.Reset(); // Zapalamy czerwone światło (Zamrażamy)
+                _isPaused = true;
+                btnPauza.Text = "Wznów";
+                rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] ⏸️ ZAPAUZOWANO. Kliknij Wznów, aby kontynuować.\n");
+            }
+        }
+
+        // ==========================================
+        // OBSŁUGA PRZYCISKU STOP
+        // ==========================================
+        private void btnStop_Click(object sender, EventArgs e)
+        {
+            if (_cts != null && !_cts.IsCancellationRequested)
+            {
+                _cts.Cancel(); // Wysyłamy sygnał przerwania (wyłapie go nasz 'AktywnySleep' i token)
+                rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] 🛑 WYSŁANO SYGNAŁ PRZERWANIA PROCESU...\n");
+
+                // Jeśli program spał w trybie pauzy, musimy go natychmiast "odmrozić", 
+                // żeby pętla mogła wyłapać token anulowania i zakończyć proces
+                if (_isPaused)
+                {
+                    _pauseEvent.Set();
+                }
+            }
         }
     }
 }

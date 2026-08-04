@@ -48,6 +48,8 @@
             btnWybierzEnova = new Button();
             txtSciezkaEnova = new TextBox();
             label6 = new Label();
+            btnStop = new Button();
+            btnPauza = new Button();
             SuspendLayout();
             // 
             // btnWczytajBazy
@@ -163,7 +165,7 @@
             // 
             // btnStart
             // 
-            btnStart.Location = new Point(346, 525);
+            btnStart.Location = new Point(260, 525);
             btnStart.Name = "btnStart";
             btnStart.Size = new Size(232, 23);
             btnStart.TabIndex = 13;
@@ -227,11 +229,33 @@
             label6.TabIndex = 17;
             label6.Text = "Ścieżka do Enovy (.exe):";
             // 
+            // btnStop
+            // 
+            btnStop.Location = new Point(632, 525);
+            btnStop.Name = "btnStop";
+            btnStop.Size = new Size(113, 23);
+            btnStop.TabIndex = 20;
+            btnStop.Text = "STOP";
+            btnStop.UseVisualStyleBackColor = true;
+            btnStop.Click += btnStop_Click;
+            // 
+            // btnPauza
+            // 
+            btnPauza.Location = new Point(498, 525);
+            btnPauza.Name = "btnPauza";
+            btnPauza.Size = new Size(128, 23);
+            btnPauza.TabIndex = 21;
+            btnPauza.Text = "PAUZA";
+            btnPauza.UseVisualStyleBackColor = true;
+            btnPauza.Click += btnPauza_Click;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(944, 560);
+            Controls.Add(btnPauza);
+            Controls.Add(btnStop);
             Controls.Add(btnWybierzEnova);
             Controls.Add(txtSciezkaEnova);
             Controls.Add(label6);
@@ -280,5 +304,7 @@
         private Button btnWybierzEnova;
         private TextBox txtSciezkaEnova;
         private Label label6;
+        private Button btnStop;
+        private Button btnPauza;
     }
 }
