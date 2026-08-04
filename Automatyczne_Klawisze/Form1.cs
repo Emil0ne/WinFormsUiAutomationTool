@@ -238,5 +238,25 @@ namespace Automatyczne_Klawisze
                 }
             }
         }
+
+        private void txtSciezkaXml_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void btnWyczyscLogi_Click(object sender, EventArgs e)
+        {
+            rtbLogi.Clear();
+        }
+
+        private void btnZapiszLogi_Click(object sender, EventArgs e)
+        {
+            var linie = rtbLogi.Lines;
+
+            EnovaAutomator.ZapiszLogiDoPliku(linie, (komunikat) =>
+            {
+                rtbLogi.AppendText(Environment.NewLine + komunikat);
+            });
+        }
     }
 }

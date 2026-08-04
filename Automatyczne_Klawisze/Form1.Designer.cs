@@ -50,6 +50,8 @@
             label6 = new Label();
             btnStop = new Button();
             btnPauza = new Button();
+            btnWyczyscLogi = new Button();
+            btnZapiszLogi = new Button();
             SuspendLayout();
             // 
             // btnWczytajBazy
@@ -152,6 +154,7 @@
             txtSciezkaXml.Name = "txtSciezkaXml";
             txtSciezkaXml.Size = new Size(238, 23);
             txtSciezkaXml.TabIndex = 11;
+            txtSciezkaXml.TextChanged += txtSciezkaXml_TextChanged;
             // 
             // btnWybierzXml
             // 
@@ -175,10 +178,10 @@
             // 
             // rtbLogi
             // 
-            rtbLogi.Location = new Point(602, 12);
+            rtbLogi.Location = new Point(604, 13);
             rtbLogi.Name = "rtbLogi";
             rtbLogi.ReadOnly = true;
-            rtbLogi.Size = new Size(317, 300);
+            rtbLogi.Size = new Size(317, 422);
             rtbLogi.TabIndex = 14;
             rtbLogi.Text = "";
             rtbLogi.TextChanged += rtbLogi_TextChanged;
@@ -249,11 +252,33 @@
             btnPauza.UseVisualStyleBackColor = true;
             btnPauza.Click += btnPauza_Click;
             // 
+            // btnWyczyscLogi
+            // 
+            btnWyczyscLogi.Location = new Point(604, 441);
+            btnWyczyscLogi.Name = "btnWyczyscLogi";
+            btnWyczyscLogi.Size = new Size(140, 23);
+            btnWyczyscLogi.TabIndex = 22;
+            btnWyczyscLogi.Text = "Wyczyść logi";
+            btnWyczyscLogi.UseVisualStyleBackColor = true;
+            btnWyczyscLogi.Click += btnWyczyscLogi_Click;
+            // 
+            // btnZapiszLogi
+            // 
+            btnZapiszLogi.Location = new Point(781, 441);
+            btnZapiszLogi.Name = "btnZapiszLogi";
+            btnZapiszLogi.Size = new Size(140, 23);
+            btnZapiszLogi.TabIndex = 23;
+            btnZapiszLogi.Text = "Zapisz logi do TXT";
+            btnZapiszLogi.UseVisualStyleBackColor = true;
+            btnZapiszLogi.Click += btnZapiszLogi_Click;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(944, 560);
+            Controls.Add(btnZapiszLogi);
+            Controls.Add(btnWyczyscLogi);
             Controls.Add(btnPauza);
             Controls.Add(btnStop);
             Controls.Add(btnWybierzEnova);
@@ -306,5 +331,7 @@
         private Label label6;
         private Button btnStop;
         private Button btnPauza;
+        private Button btnWyczyscLogi;
+        private Button btnZapiszLogi;
     }
 }

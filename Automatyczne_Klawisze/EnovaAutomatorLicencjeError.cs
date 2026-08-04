@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Linq;
 using System.IO;
 using FlaUI.Core;
@@ -13,7 +12,7 @@ using FlaUI.Core.WindowsAPI;
 
 namespace Automatyczne_Klawisze
 {
-    public class EnovaAutomatorMain
+    public class EnovaAutomatorLicencjeError
     {
         // Elastyczne usypianie reagujące na Stop i Pauzę
         private static void AktywnySleep(int milliseconds, CancellationToken token, ManualResetEventSlim pauseEvent)
@@ -28,42 +27,6 @@ namespace Automatyczne_Klawisze
                 elapsed += step;
             }
         }
-
-        // =======================================================
-        // BEZPIECZNY WRAPPER NA WYWOŁANIA UIA/COM
-        // =======================================================
-        // Każde wywołanie FlaUI (GetAllTopLevelWindows, FindFirstDescendant, ModalWindows itd.)
-        // to synchroniczne wywołanie COM do wątku UI aplikacji docelowej. Jeśli ten wątek
-        // nie pompuje komunikatów (np. proces świeżo po restarcie, jeszcze się inicjalizuje),
-        // wywołanie może zablokować się W NIESKOŃCZONOŚĆ, bez wyjątku. Ten wrapper odpala
-        // wywołanie na osobnym wątku i jeśli nie zdąży w zadanym czasie - zwraca fallback,
-        // zamiast zawieszać całego bota.
-        private static T UiaSafeCall<T>(Func<T> action, TimeSpan timeout, T fallback = default)
-        {
-            try
-            {
-                var task = Task.Run(action);
-                if (task.Wait(timeout))
-                {
-                    return task.IsFaulted ? fallback : task.Result;
-                }
-                // Wątek zostaje "porzucony" w tle (zostanie zwolniony gdy COM w końcu odpowie
-                // lub gdy proces zostanie zabity), ale główna pętla bota idzie dalej.
-                return fallback;
-            }
-            catch
-            {
-                return fallback;
-            }
-        }
-
-        private static readonly TimeSpan UiaCallTimeout = TimeSpan.FromSeconds(5);
-
-        // Krótszy timeout do pętli pollingowych odpytywanych co 500ms - jeśli pojedyncze
-        // zapytanie nie zdąży w 2s, i tak za chwilę nastąpi kolejna iteracja, więc nie ma
-        // sensu czekać pełne 5s. Dłuższy UiaCallTimeout zostaje tam, gdzie odpytujemy rzadko
-        // (np. raz po restarcie procesu) i chcemy dać UI więcej czasu na jednorazową odpowiedź.
-        private static readonly TimeSpan UiaPollTimeout = TimeSpan.FromSeconds(2);
 
         // =======================================================
         // GŁÓWNA FUNKCJA STERUJĄCA PĘTLĄ I RAPORTAMI
@@ -150,11 +113,6 @@ namespace Automatyczne_Klawisze
 
                 using (var automation = new UIA3Automation())
                 {
-                    // KLUCZOWE: bez timeoutów na COM/UIA wywołania mogą wisieć w nieskończoność
-                    // gdy aplikacja docelowa (Enova) nie pompuje komunikatów (np. tuż po starcie/restarcie).
-                    automation.ConnectionTimeout = TimeSpan.FromSeconds(8);
-                    automation.TransactionTimeout = TimeSpan.FromSeconds(8);
-
                     if (startedProcess == null)
                     {
                         powodBledu = "Nie udało się wystartować procesu Enovy.";
@@ -167,9 +125,7 @@ namespace Automatyczne_Klawisze
                     // BEZPIECZNE POBIERANIE OKNA (omija deadlock GetMainWindow)
                     for (int i = 0; i < 20; i++)
                     {
-                        var localApp = app;
-                        var okna = UiaSafeCall(() => localApp.GetAllTopLevelWindows(automation), UiaCallTimeout, Array.Empty<Window>());
-                        mainWindow = okna.FirstOrDefault();
+                        mainWindow = app.GetAllTopLevelWindows(automation).FirstOrDefault();
                         if (mainWindow != null) break;
                         AktywnySleep(500, token, pauseEvent);
                     }
@@ -185,10 +141,7 @@ namespace Automatyczne_Klawisze
                     // ==========================================
                     log("Szukam pola wyboru bazy...");
                     FlaUI.Core.AutomationElements.TextBox poleWyszukiwania = null;
-                    var localMainWindow1 = mainWindow;
-                    var wszystkiePolaEdit = UiaSafeCall(
-                        () => localMainWindow1.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Edit)),
-                        UiaCallTimeout, Array.Empty<AutomationElement>());
+                    var wszystkiePolaEdit = mainWindow.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Edit));
 
                     foreach (var pole in wszystkiePolaEdit)
                     {
@@ -215,10 +168,7 @@ namespace Automatyczne_Klawisze
                         log($"Filtruję listę dla: {szukanaFraza}");
                         AktywnySleep(1500, token, pauseEvent);
 
-                        var localMainWindow2 = mainWindow;
-                        var znalezioneElementy = UiaSafeCall(
-                            () => localMainWindow2.FindAllDescendants(cf => cf.ByName(nazwaBazy)),
-                            UiaCallTimeout, Array.Empty<AutomationElement>());
+                        var znalezioneElementy = mainWindow.FindAllDescendants(cf => cf.ByName(nazwaBazy));
                         AutomationElement elementBazy = null;
 
                         if (znalezioneElementy.Length > 0)
@@ -241,16 +191,18 @@ namespace Automatyczne_Klawisze
                             // --- OBSŁUGA OKNA AKTUALIZACJI DODATKÓW ---
                             AktywnySleep(3000, token, pauseEvent);
                             Window oknoAktualizacji = null;
-                            var localMainWindow3 = mainWindow;
-                            var modalne1 = UiaSafeCall(() => localMainWindow3.ModalWindows, UiaCallTimeout, Array.Empty<Window>());
-                            foreach (var modal in modalne1)
+                            try
                             {
-                                if (modal.Name != null && modal.Name.Contains("Aktualizacja dodatków"))
+                                foreach (var modal in mainWindow.ModalWindows)
                                 {
-                                    oknoAktualizacji = modal;
-                                    break;
+                                    if (modal.Name.Contains("Aktualizacja dodatków"))
+                                    {
+                                        oknoAktualizacji = modal;
+                                        break;
+                                    }
                                 }
                             }
+                            catch { }
 
                             if (oknoAktualizacji != null)
                             {
@@ -259,49 +211,21 @@ namespace Automatyczne_Klawisze
                                 if (btnTak != null) btnTak.Click();
                                 else { oknoAktualizacji.Focus(); Keyboard.Press(VirtualKeyShort.ENTER); }
 
-                                log("Czekam na całkowity reset Enovy...");
+                                log("Czekam 15 sekund na całkowity reset Enovy...");
                                 int staryPid = startedProcess.Id;
+                                AktywnySleep(15000, token, pauseEvent);
+
                                 string nazwaProcesu = System.IO.Path.GetFileNameWithoutExtension(sciezkaEnova);
+                                var procesy = Process.GetProcessesByName(nazwaProcesu);
 
-                                // Adaptacyjne czekanie zamiast sztywnych 15s: sprawdzamy co 500ms
-                                // przez maksymalnie 20s, ale przerywamy natychmiast gdy nowy proces się pojawi -
-                                // jeśli restart zajmie Enovie tylko 5-6s, nie tracimy pozostałych 9-10s na darmo.
-                                Process nowyProces = null;
-                                int maxCzekaniaMs = 20000;
-                                int odczekanoMs = 0;
-                                while (odczekanoMs < maxCzekaniaMs)
-                                {
-                                    AktywnySleep(500, token, pauseEvent);
-                                    odczekanoMs += 500;
-                                    var procesyTmp = Process.GetProcessesByName(nazwaProcesu);
-                                    nowyProces = procesyTmp.FirstOrDefault(p => p.Id != staryPid);
-                                    if (nowyProces != null) break;
-                                }
-
-                                if (nowyProces == null)
-                                {
-                                    // Ostatnia szansa - może stary proces po prostu ożył pod tym samym PID
-                                    var procesy = Process.GetProcessesByName(nazwaProcesu);
-                                    nowyProces = procesy.FirstOrDefault();
-                                }
+                                // Wyciągamy nowy proces, by bot nie dusił się na starym ID
+                                var nowyProces = procesy.FirstOrDefault(p => p.Id != staryPid) ?? procesy.FirstOrDefault();
 
                                 if (nowyProces != null)
                                 {
                                     startedProcess = nowyProces;
-
-                                    // Czekamy aż proces faktycznie zacznie pompować komunikaty UI,
-                                    // zamiast ślepo ufać sztywnemu czasowi. WaitForInputIdle nie jest
-                                    // stuprocentowo pewne dla WPF, dlatego dalej i tak używamy UiaSafeCall,
-                                    // ale znacząco zmniejsza to ryzyko odpytywania "martwego" procesu.
-                                    try { startedProcess.WaitForInputIdle(20000); }
-                                    catch (Exception exIdle) { log($"(info) WaitForInputIdle: {exIdle.Message}"); }
-
                                     app = FlaUI.Core.Application.Attach(startedProcess);
                                     log($"Ponownie podpięto się pod proces Enovy (PID: {startedProcess.Id}).");
-
-                                    // WAŻNE: zerujemy mainWindow, bo trzyma uchwyt na okno starego,
-                                    // już nieistniejącego procesu - żeby nikt przypadkiem nie odpytywał martwej referencji.
-                                    mainWindow = null;
                                 }
                                 else
                                 {
@@ -331,24 +255,23 @@ namespace Automatyczne_Klawisze
                     for (int i = 0; i < 20; i++)
                     {
                         pauseEvent.Wait(token);
-                        var localApp2 = app;
-                        var topWindows = UiaSafeCall(() => localApp2.GetAllTopLevelWindows(automation), UiaPollTimeout, Array.Empty<Window>());
-                        oknoLogowania = topWindows.FirstOrDefault(w => w.Name != null && w.Name.Contains("Logowanie do bazy"));
-
-                        if (oknoLogowania == null)
+                        try
                         {
-                            // Fallback: sprawdzamy modalne tylko jeśli nie znaleźliśmy okna wśród top-level
+                            var topWindows = app.GetAllTopLevelWindows(automation);
                             foreach (var wnd in topWindows)
                             {
-                                var localWnd = wnd;
-                                var modale = UiaSafeCall(() => localWnd.ModalWindows, UiaPollTimeout, Array.Empty<Window>());
-                                var znalezione = modale.FirstOrDefault(m => m.Name != null && m.Name.Contains("Logowanie do bazy"));
-                                if (znalezione != null) { oknoLogowania = znalezione; break; }
+                                if (wnd.Name != null && wnd.Name.Contains("Logowanie do bazy")) { oknoLogowania = wnd; break; }
+                                foreach (var modal in wnd.ModalWindows)
+                                {
+                                    if (modal.Name != null && modal.Name.Contains("Logowanie do bazy")) { oknoLogowania = modal; break; }
+                                }
+                                if (oknoLogowania != null) break;
                             }
                         }
+                        catch { }
 
                         if (oknoLogowania != null) break;
-                        AktywnySleep(300, token, pauseEvent);
+                        AktywnySleep(500, token, pauseEvent);
                     }
 
                     if (oknoLogowania != null)
@@ -377,72 +300,56 @@ namespace Automatyczne_Klawisze
 
                         bool zlyLogin = false;
                         bool wymagaKonwersji = false;
-                        bool sukcesPotwierdzony = false;
 
-                        // Zwiększamy liczbę prób do 40 (przy 300ms odstępach to nadal ~12s realnego pollingu,
-                        // ale każda iteracja jest teraz dużo tańsza - 1-2 zapytania UIA zamiast 3-4)
-                        for (int i = 0; i < 40; i++)
+                        // Zwiększamy liczbę prób do 24 (12 sekund), żeby wolne bazy po aktualizacji nie oszukały bota
+                        for (int i = 0; i < 24; i++)
                         {
                             pauseEvent.Wait(token);
 
                             Window errorWindow = null;
                             Window konwersjaWindow = null;
 
-                            var localApp3 = app;
-                            var topWindows = UiaSafeCall(() => localApp3.GetAllTopLevelWindows(automation), UiaPollTimeout, Array.Empty<Window>());
-                            konwersjaWindow = topWindows.FirstOrDefault(w => w.Name != null && w.Name.Contains("Konwersja bazy"));
-                            errorWindow = topWindows.FirstOrDefault(w => w.Name != null && (w.Name.Contains("Stop") || w.Name.Contains("Błąd")));
-
-                            // WAŻNE: tani sprawdzian nazw okien modalnych przypiętych do okna logowania -
-                            // niektóre okna błędów (np. "Stop - enova365") potrafią być zwracane przez
-                            // ModalWindows, a nie pojawiać się w GetAllTopLevelWindows. To musi być sprawdzane
-                            // w KAŻDEJ iteracji (to tylko enumeracja + porównanie nazw, nie głębokie skanowanie).
-                            if (errorWindow == null && konwersjaWindow == null)
+                            try
                             {
-                                var localOknoLogowania = oknoLogowania;
-                                var modaleLog = UiaSafeCall(() => localOknoLogowania.ModalWindows, UiaPollTimeout, Array.Empty<Window>());
-                                konwersjaWindow = modaleLog.FirstOrDefault(m => m.Name != null && m.Name.Contains("Konwersja bazy"));
-                                errorWindow = modaleLog.FirstOrDefault(m => m.Name != null && (m.Name.Contains("Stop") || m.Name.Contains("Błąd")));
+                                konwersjaWindow = oknoLogowania.ModalWindows.FirstOrDefault(m => m.Name != null && m.Name.Contains("Konwersja bazy"));
+                                errorWindow = oknoLogowania.ModalWindows.FirstOrDefault(m => m.Name != null && (m.Name.Contains("Stop") || m.Name.Contains("Błąd")));
 
-                                // Głęboki skan "Raport błędu" (kosztowny) robimy tylko co 5. iterację jako
-                                // dodatkową siatkę bezpieczeństwa, na wypadek gdyby okno błędu nie miało
-                                // charakterystycznej nazwy w polu Name.
-                                if (errorWindow == null && konwersjaWindow == null && i % 5 == 0)
+                                if (errorWindow == null)
                                 {
-                                    foreach (var m in modaleLog)
+                                    foreach (var m in oknoLogowania.ModalWindows)
                                     {
-                                        var localM = m;
-                                        var raport = UiaSafeCall(() => localM.FindFirstDescendant(cf => cf.ByName("Raport błędu")), UiaPollTimeout);
-                                        if (raport != null) { errorWindow = m; break; }
+                                        if (m.FindFirstDescendant(cf => cf.ByName("Raport błędu")) != null) { errorWindow = m; break; }
                                     }
                                 }
                             }
+                            catch { }
 
                             if (konwersjaWindow == null && errorWindow == null)
                             {
-                                // Sprawdzamy czy okno logowania nadal istnieje
-                                bool logowanieIstnieje = topWindows.Any(w => w.Name != null && w.Name.Contains("Logowanie do bazy"));
-                                if (!logowanieIstnieje)
+                                try
                                 {
-                                    // Okno zniknęło – upewniamy się czy główne okno Enovy już wstało, zanim uciekniemy z pętli!
-                                    var testMain = topWindows.FirstOrDefault(w => w.Name != null && w.Name.Contains("enova365"));
-                                    if (testMain != null) { sukcesPotwierdzony = true; break; } // Enova gotowa, sukces jednoznacznie potwierdzony!
+                                    var topWindows = app.GetAllTopLevelWindows(automation);
+                                    konwersjaWindow = topWindows.FirstOrDefault(w => w.Name != null && w.Name.Contains("Konwersja bazy"));
+                                    errorWindow = topWindows.FirstOrDefault(w => w.Name != null && (w.Name.Contains("Stop") || w.Name.Contains("Błąd")));
+
+                                    // Sprawdzamy czy okno logowania nadal istnieje
+                                    bool logowanieIstnieje = topWindows.Any(w => w.Name != null && w.Name.Contains("Logowanie do bazy"));
+                                    if (!logowanieIstnieje)
+                                    {
+                                        // Okno zniknęło – upewniamy się czy główne okno Enovy już wstało, zanim uciekniemy z pętli!
+                                        var testMain = topWindows.FirstOrDefault(w => w.Name != null && w.Name.Contains("enova365"));
+                                        if (testMain != null) break; // Enova gotowa!
+                                    }
                                 }
+                                catch { }
                             }
 
                             if (konwersjaWindow != null)
                             {
                                 wymagaKonwersji = true;
-                                try
-                                {
-                                    var btnAnulujKonwersje = konwersjaWindow.FindFirstDescendant(cf => cf.ByName("Anuluj"))?.AsButton();
-                                    if (btnAnulujKonwersje != null) btnAnulujKonwersje.Click();
-                                    else { konwersjaWindow.Focus(); Keyboard.Press(VirtualKeyShort.ESCAPE); }
-                                }
-                                catch (Exception exKlik)
-                                {
-                                    log($"(info) Nie udało się anulować konwersji (element już nieaktualny): {exKlik.Message}");
-                                }
+                                var btnAnulujKonwersje = konwersjaWindow.FindFirstDescendant(cf => cf.ByName("Anuluj"))?.AsButton();
+                                if (btnAnulujKonwersje != null) btnAnulujKonwersje.Click();
+                                else { konwersjaWindow.Focus(); Keyboard.Press(VirtualKeyShort.ESCAPE); }
                                 AktywnySleep(1000, token, pauseEvent);
                                 break;
                             }
@@ -450,71 +357,15 @@ namespace Automatyczne_Klawisze
                             if (errorWindow != null)
                             {
                                 zlyLogin = true;
-                                // Interakcja z elementem opakowana w try-catch: jeśli okno zniknie/zmieni
-                                // stan między wykryciem a kliknięciem (COMException 0x80040201 - "element
-                                // niedostępny"), i tak wiemy że błąd wystąpił (zlyLogin już ustawione wyżej),
-                                // więc nie pozwalamy temu wyjątkowi uciec do generycznego catch na górze.
-                                try
-                                {
-                                    var btnOkError = errorWindow.FindFirstDescendant(cf => cf.ByName("OK"))?.AsButton();
-                                    if (btnOkError != null) btnOkError.Click();
-                                    else { errorWindow.Focus(); Keyboard.Press(VirtualKeyShort.ENTER); }
-                                }
-                                catch (Exception exKlik)
-                                {
-                                    log($"(info) Nie udało się kliknąć OK na oknie błędu (element już nieaktualny): {exKlik.Message}");
-                                }
+                                var btnOkError = errorWindow.FindFirstDescendant(cf => cf.ByName("OK"))?.AsButton();
+                                if (btnOkError != null) btnOkError.Click();
+                                else { errorWindow.Focus(); Keyboard.Press(VirtualKeyShort.ENTER); }
                                 AktywnySleep(1000, token, pauseEvent);
                                 break;
                             }
 
                             if (wymagaKonwersji || zlyLogin) break;
-                            AktywnySleep(300, token, pauseEvent);
-                        }
-
-                        // Jeśli pętla wyczerpała limit prób BEZ jednoznacznego sygnału (błąd / konwersja /
-                        // potwierdzony sukces) - to NIE JEST domyślny sukces. Robimy jeszcze jedną, dokładną
-                        // próbę z pełnym timeoutem (na wypadek gdyby poprzednie odpytania trafiły akurat
-                        // w moment przeciążenia UI), zanim ostatecznie zgłosimy błąd zamiast lecieć dalej w ciemno.
-                        if (!wymagaKonwersji && !zlyLogin && !sukcesPotwierdzony)
-                        {
-                            log("⚠ Brak jednoznacznego potwierdzenia zalogowania - wykonuję dokładniejszą kontrolę końcową...");
-
-                            var localApp3b = app;
-                            var topWindowsFinal = UiaSafeCall(() => localApp3b.GetAllTopLevelWindows(automation), UiaCallTimeout, Array.Empty<Window>());
-                            var errorFinal = topWindowsFinal.FirstOrDefault(w => w.Name != null && (w.Name.Contains("Stop") || w.Name.Contains("Błąd")));
-
-                            if (errorFinal == null)
-                            {
-                                var localOknoLogowaniaB = oknoLogowania;
-                                var modaleLogB = UiaSafeCall(() => localOknoLogowaniaB.ModalWindows, UiaCallTimeout, Array.Empty<Window>());
-                                errorFinal = modaleLogB.FirstOrDefault(m => m.Name != null && (m.Name.Contains("Stop") || m.Name.Contains("Błąd")));
-                            }
-
-                            if (errorFinal != null)
-                            {
-                                zlyLogin = true;
-                                try
-                                {
-                                    var btnOkErrorFinal = errorFinal.FindFirstDescendant(cf => cf.ByName("OK"))?.AsButton();
-                                    if (btnOkErrorFinal != null) btnOkErrorFinal.Click();
-                                    else { errorFinal.Focus(); Keyboard.Press(VirtualKeyShort.ENTER); }
-                                }
-                                catch (Exception exKlik)
-                                {
-                                    log($"(info) Nie udało się kliknąć OK na oknie błędu (element już nieaktualny): {exKlik.Message}");
-                                }
-                                AktywnySleep(1000, token, pauseEvent);
-                            }
-                            else
-                            {
-                                bool logowanieIstniejeFinal = topWindowsFinal.Any(w => w.Name != null && w.Name.Contains("Logowanie do bazy"));
-                                bool mainWindowFinal = topWindowsFinal.Any(w => w.Name != null && w.Name.Contains("enova365"));
-                                if (!logowanieIstniejeFinal && mainWindowFinal)
-                                {
-                                    sukcesPotwierdzony = true;
-                                }
-                            }
+                            AktywnySleep(500, token, pauseEvent);
                         }
 
                         if (wymagaKonwersji)
@@ -529,19 +380,23 @@ namespace Automatyczne_Klawisze
                             return false;
                         }
 
-                        if (!sukcesPotwierdzony)
+                        log("Logowanie powiodło się. Oczekiwanie na pełne wyrenderowanie okna licencji...");
+                        AktywnySleep(2000, token, pauseEvent);
+
+                        if (wymagaKonwersji)
                         {
-                            // Wyczerpaliśmy wszystkie próby (łącznie z dokładniejszą kontrolą końcową) i nadal
-                            // nie mamy jednoznacznego potwierdzenia, że logowanie się powiodło. NIE wolno lecieć
-                            // dalej w ciemno - to właśnie ten scenariusz powodował, że bot ignorował realny błąd
-                            // logowania i fałszywie raportował sukces całej bazy.
-                            powodBledu = "Nie udało się jednoznacznie potwierdzić poprawnego zalogowania w wyznaczonym czasie (możliwy niewykryty błąd logowania lub bardzo wolne ładowanie bazy).";
+                            powodBledu = "Baza wymaga konwersji (zbyt stara wersja).";
                             return false;
                         }
 
-                        // Usunięto sztywne dopełniacze 2000ms+1500ms - pętla wykrywania okna licencji
-                        // w KROK 3 i tak aktywnie poll'uje co 500ms, więc te 3.5s było czystym narzutem.
+                        if (zlyLogin)
+                        {
+                            powodBledu = "Odrzucono logowanie (Błędne hasło lub zablokowane konto).";
+                            return false;
+                        }
+
                         log("Logowanie poprawne. Przechodzę do weryfikacji licencji...");
+                        AktywnySleep(1500, token, pauseEvent);
                     }
                     else
                     {
@@ -559,20 +414,19 @@ namespace Automatyczne_Klawisze
                     for (int j = 0; j < 20; j++)
                     {
                         pauseEvent.Wait(token);
-
-                        var localApp4 = app;
-                        var wszystkieOkna = UiaSafeCall(() => localApp4.GetAllTopLevelWindows(automation), UiaPollTimeout, Array.Empty<Window>());
-                        foreach (var wnd in wszystkieOkna)
+                        try
                         {
-                            var localWnd2 = wnd;
-                            btnOdznacz = UiaSafeCall(
-                                () => localWnd2.FindFirstDescendant(cf => cf.ByName("Odznacz niedostępne licencje"))?.AsButton(),
-                                UiaPollTimeout);
-                            if (btnOdznacz != null) { oknoLicencji = wnd; break; }
+                            var wszystkieOkna = app.GetAllTopLevelWindows(automation);
+                            foreach (var wnd in wszystkieOkna)
+                            {
+                                btnOdznacz = wnd.FindFirstDescendant(cf => cf.ByName("Odznacz niedostępne licencje"))?.AsButton();
+                                if (btnOdznacz != null) { oknoLicencji = wnd; break; }
+                            }
                         }
+                        catch { }
 
                         if (btnOdznacz != null) break;
-                        AktywnySleep(300, token, pauseEvent);
+                        AktywnySleep(500, token, pauseEvent);
                     }
 
                     if (btnOdznacz != null && oknoLicencji != null)
@@ -581,10 +435,7 @@ namespace Automatyczne_Klawisze
                         try { if (btnOdznacz.IsEnabled) btnOdznacz.Click(); } catch { }
                         AktywnySleep(1500, token, pauseEvent);
 
-                        var localOknoLicencji = oknoLicencji;
-                        var btnZapisz = UiaSafeCall(
-                            () => localOknoLicencji.FindFirstDescendant(cf => cf.ByName("Zapisz i zamknij"))?.AsButton(),
-                            UiaCallTimeout);
+                        var btnZapisz = oknoLicencji.FindFirstDescendant(cf => cf.ByName("Zapisz i zamknij"))?.AsButton();
                         if (btnZapisz != null)
                         {
                             btnZapisz.Click();
@@ -597,10 +448,13 @@ namespace Automatyczne_Klawisze
                     mainWindow = null;
                     for (int i = 0; i < 15; i++)
                     {
-                        var localApp5 = app;
-                        var okna = UiaSafeCall(() => localApp5.GetAllTopLevelWindows(automation), UiaCallTimeout, Array.Empty<Window>());
-                        mainWindow = okna.FirstOrDefault(w => w.Name != null && w.Name.Contains("enova365")) ?? okna.FirstOrDefault();
-                        if (mainWindow != null) break;
+                        try
+                        {
+                            var okna = app.GetAllTopLevelWindows(automation);
+                            mainWindow = okna.FirstOrDefault(w => w.Name != null && w.Name.Contains("enova365")) ?? okna.FirstOrDefault();
+                            if (mainWindow != null) break;
+                        }
+                        catch { }
                         AktywnySleep(500, token, pauseEvent);
                     }
 
@@ -628,15 +482,10 @@ namespace Automatyczne_Klawisze
                     for (int i = 0; i < 20; i++)
                     {
                         pauseEvent.Wait(token);
-
-                        var localMainWindow4 = mainWindow;
-                        var modaleOtw = UiaSafeCall(() => localMainWindow4.ModalWindows, UiaCallTimeout, Array.Empty<Window>());
-                        oknoOtwierania = modaleOtw.FirstOrDefault(m => m.Name != null && (m.Name.Contains("Otwieranie") || m.Name.Contains("Open")));
-
+                        oknoOtwierania = mainWindow.ModalWindows.FirstOrDefault(m => m.Name != null && (m.Name.Contains("Otwieranie") || m.Name.Contains("Open")));
                         if (oknoOtwierania == null)
                         {
-                            var localApp6 = app;
-                            var topWindows = UiaSafeCall(() => localApp6.GetAllTopLevelWindows(automation), UiaCallTimeout, Array.Empty<Window>());
+                            var topWindows = app.GetAllTopLevelWindows(automation);
                             oknoOtwierania = topWindows.FirstOrDefault(m => m.Name != null && (m.Name.Contains("Otwieranie") || m.Name.Contains("Open")));
                         }
                         if (oknoOtwierania != null) break;
@@ -655,15 +504,10 @@ namespace Automatyczne_Klawisze
                         for (int i = 0; i < 20; i++)
                         {
                             pauseEvent.Wait(token);
-
-                            var localMainWindow5 = mainWindow;
-                            var modaleInfo = UiaSafeCall(() => localMainWindow5.ModalWindows, UiaCallTimeout, Array.Empty<Window>());
-                            oknoInformacji = modaleInfo.FirstOrDefault(m => m.Name != null && (m.Name.Contains("Informacja - enova365") || m.Name.Contains("Informacja")));
-
+                            oknoInformacji = mainWindow.ModalWindows.FirstOrDefault(m => m.Name != null && (m.Name.Contains("Informacja - enova365") || m.Name.Contains("Informacja")));
                             if (oknoInformacji == null)
                             {
-                                var localApp7 = app;
-                                var topWindows = UiaSafeCall(() => localApp7.GetAllTopLevelWindows(automation), UiaCallTimeout, Array.Empty<Window>());
+                                var topWindows = app.GetAllTopLevelWindows(automation);
                                 oknoInformacji = topWindows.FirstOrDefault(m => m.Name != null && (m.Name.Contains("Informacja - enova365") || m.Name.Contains("Informacja")));
                             }
                             if (oknoInformacji != null) break;
@@ -693,9 +537,7 @@ namespace Automatyczne_Klawisze
                     for (int i = 0; i < 5; i++)
                     {
                         pauseEvent.Wait(token);
-
-                        var localMainWindow6 = mainWindow;
-                        var wszystkieElementy = UiaSafeCall(() => localMainWindow6.FindAllDescendants(), UiaCallTimeout, Array.Empty<AutomationElement>());
+                        var wszystkieElementy = mainWindow.FindAllDescendants();
                         foreach (var el in wszystkieElementy)
                         {
                             try
@@ -723,9 +565,8 @@ namespace Automatyczne_Klawisze
                         wpisOperatora.Click();
                         AktywnySleep(1000, token, pauseEvent);
 
-                        var localMainWindow7 = mainWindow;
-                        var btnUstawHaslo = UiaSafeCall(() => localMainWindow7.FindFirstDescendant(cf => cf.ByName("Ustaw hasło..."))?.AsButton(), UiaCallTimeout)
-                                            ?? UiaSafeCall(() => localMainWindow7.FindFirstDescendant(cf => cf.ByName("Ustaw hasło"))?.AsButton(), UiaCallTimeout);
+                        var btnUstawHaslo = mainWindow.FindFirstDescendant(cf => cf.ByName("Ustaw hasło..."))?.AsButton()
+                                            ?? mainWindow.FindFirstDescendant(cf => cf.ByName("Ustaw hasło"))?.AsButton();
 
                         if (btnUstawHaslo != null)
                         {
@@ -735,24 +576,19 @@ namespace Automatyczne_Klawisze
                             for (int k = 0; k < 20; k++)
                             {
                                 pauseEvent.Wait(token);
-
-                                var localApp8 = app;
-                                var wszystkieOkna = UiaSafeCall(() => localApp8.GetAllTopLevelWindows(automation), UiaCallTimeout, Array.Empty<Window>());
+                                var wszystkieOkna = app.GetAllTopLevelWindows(automation);
                                 foreach (var w in wszystkieOkna)
                                 {
                                     if (!string.IsNullOrEmpty(w.Name) && (w.Name.IndexOf("hasł", StringComparison.OrdinalIgnoreCase) >= 0 || w.Name.IndexOf("Ustawien", StringComparison.OrdinalIgnoreCase) >= 0))
                                     { oknoUstawiania = w; break; }
 
-                                    var localW = w;
-                                    var btnBrak = UiaSafeCall(() => localW.FindFirstDescendant(cf => cf.ByName("Brak"))?.AsButton(), UiaCallTimeout);
+                                    var btnBrak = w.FindFirstDescendant(cf => cf.ByName("Brak"))?.AsButton();
                                     if (btnBrak != null) { oknoUstawiania = w; break; }
                                 }
 
                                 if (oknoUstawiania == null)
                                 {
-                                    var localMainWindow8 = mainWindow;
-                                    var modaleUst = UiaSafeCall(() => localMainWindow8.ModalWindows, UiaCallTimeout, Array.Empty<Window>());
-                                    foreach (var m in modaleUst)
+                                    foreach (var m in mainWindow.ModalWindows)
                                     {
                                         if (!string.IsNullOrEmpty(m.Name) && (m.Name.IndexOf("hasł", StringComparison.OrdinalIgnoreCase) >= 0))
                                         { oknoUstawiania = m; break; }
@@ -788,8 +624,7 @@ namespace Automatyczne_Klawisze
 
                                 AktywnySleep(2500, token, pauseEvent);
 
-                                var localMainWindow9 = mainWindow;
-                                var btnZapiszKoncowe = UiaSafeCall(() => localMainWindow9.FindFirstDescendant(cf => cf.ByName("Zapisz i zamknij"))?.AsButton(), UiaCallTimeout);
+                                var btnZapiszKoncowe = mainWindow.FindFirstDescendant(cf => cf.ByName("Zapisz i zamknij"))?.AsButton();
                                 if (btnZapiszKoncowe != null)
                                 {
                                     btnZapiszKoncowe.Click();
