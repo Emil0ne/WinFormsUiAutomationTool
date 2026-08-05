@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
 using System.IO;
+using System.Text.RegularExpressions; // <--- Dodane do obsługi wyciągania numeru wersji
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using FlaUI.UIA3;
@@ -277,7 +278,6 @@ namespace Automatyczne_Klawisze
                             {
                                 log("Wykryto okno aktualizacji! Klikam 'Tak'...");
 
-                                // KLUCZOWE: Zapisujemy datę sprzed kliknięcia, aby zignorować procesy z tła
                                 DateTime czasKlikniecia = DateTime.Now.AddSeconds(-2);
 
                                 var btnTak = oknoAktualizacji.FindFirstDescendant(cf => cf.ByName("Tak"))?.AsButton();
@@ -294,12 +294,11 @@ namespace Automatyczne_Klawisze
 
                                 while (odczekanoMs < maxCzekaniaMs)
                                 {
-                                    AktywnySleep(1000, token, pauseEvent); // Sprawdzamy co 1 sekundę
+                                    AktywnySleep(1000, token, pauseEvent);
                                     odczekanoMs += 1000;
 
                                     var procesyTmp = Process.GetProcessesByName(nazwaProcesu);
 
-                                    // Szukamy najnowszego procesu ignorując stary
                                     nowyProces = procesyTmp
                                         .Where(p => p.Id != staryPid)
                                         .OrderByDescending(p => { try { return p.StartTime; } catch { return DateTime.MinValue; } })
@@ -309,20 +308,17 @@ namespace Automatyczne_Klawisze
                                     {
                                         try
                                         {
-                                            // Upewniamy się, że to nowa instancja, a nie stara porzucona w Menedżerze Zadań
                                             if (nowyProces.StartTime >= czasKlikniecia)
                                             {
-                                                break; // Znaleźliśmy poprawny, nowy proces!
+                                                break;
                                             }
                                             else
                                             {
-                                                // Znaleziono proces z tła. Odrzucamy go na razie i czekamy na ten właściwy
                                                 nowyProces = null;
                                             }
                                         }
                                         catch
                                         {
-                                            // Fallback dla braku praw odczytu czasu (rzadki przypadek)
                                             break;
                                         }
                                     }
@@ -416,8 +412,11 @@ namespace Automatyczne_Klawisze
 
                         AktywnySleep(3000, token, pauseEvent);
 
+                        // === NOWE ZMIENNE DO OBSŁUGI BŁĘDÓW ===
                         bool zlyLogin = false;
                         bool wymagaKonwersji = false;
+                        bool nowszaWersja = false;
+                        string wersjaNowszejBazy = "";
                         bool sukcesPotwierdzony = false;
 
                         for (int i = 0; i < 40; i++)
@@ -464,7 +463,6 @@ namespace Automatyczne_Klawisze
                                     try { return w.Name != null && w.Name.Contains("Logowanie do bazy"); } catch { return false; }
                                 });
 
-                                // Jeśli okno logowania zniknęło i nie ma błędu – to znaczy, że się powiodło!
                                 if (!logowanieIstnieje)
                                 {
                                     sukcesPotwierdzony = true;
@@ -488,7 +486,34 @@ namespace Automatyczne_Klawisze
 
                             if (errorWindow != null)
                             {
-                                zlyLogin = true;
+                                // === ODCZYT TEKSTU Z OKNA BŁĘDU ===
+                                string errorText = "";
+                                try
+                                {
+                                    var textElements = errorWindow.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text));
+                                    foreach (var te in textElements)
+                                    {
+                                        if (!string.IsNullOrWhiteSpace(te.Name)) errorText += te.Name + " ";
+                                    }
+                                }
+                                catch { }
+
+                                // Sprawdzamy czy powodem odrzucenia jest nowsza wersja bazy
+                                if (errorText.Contains("z nowszej wersji"))
+                                {
+                                    nowszaWersja = true;
+                                    // Szukamy dowolnego ciągu znaków w nawiasach składającego się z cyfr i kropek
+                                    var match = Regex.Match(errorText, @"\(([\d\.]+)\)");
+                                    if (match.Success)
+                                    {
+                                        wersjaNowszejBazy = match.Groups[1].Value;
+                                    }
+                                }
+                                else
+                                {
+                                    zlyLogin = true;
+                                }
+
                                 try
                                 {
                                     var btnOkError = errorWindow.FindFirstDescendant(cf => cf.ByName("OK"))?.AsButton();
@@ -500,11 +525,11 @@ namespace Automatyczne_Klawisze
                                 break;
                             }
 
-                            if (wymagaKonwersji || zlyLogin) break;
+                            if (wymagaKonwersji || zlyLogin || nowszaWersja) break;
                             AktywnySleep(300, token, pauseEvent);
                         }
 
-                        if (!wymagaKonwersji && !zlyLogin && !sukcesPotwierdzony)
+                        if (!wymagaKonwersji && !zlyLogin && !nowszaWersja && !sukcesPotwierdzony)
                         {
                             log("⚠ Brak jednoznacznego potwierdzenia zalogowania - wykonuję dokładniejszą kontrolę końcową...");
 
@@ -525,7 +550,29 @@ namespace Automatyczne_Klawisze
 
                             if (errorFinal != null)
                             {
-                                zlyLogin = true;
+                                // === ODCZYT TEKSTU Z OKNA BŁĘDU (KONTROLA KOŃCOWA) ===
+                                string errorText = "";
+                                try
+                                {
+                                    var textElements = errorFinal.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text));
+                                    foreach (var te in textElements)
+                                    {
+                                        if (!string.IsNullOrWhiteSpace(te.Name)) errorText += te.Name + " ";
+                                    }
+                                }
+                                catch { }
+
+                                if (errorText.Contains("z nowszej wersji"))
+                                {
+                                    nowszaWersja = true;
+                                    var match = Regex.Match(errorText, @"\(([\d\.]+)\)");
+                                    if (match.Success) wersjaNowszejBazy = match.Groups[1].Value;
+                                }
+                                else
+                                {
+                                    zlyLogin = true;
+                                }
+
                                 try
                                 {
                                     var btnOkErrorFinal = errorFinal.FindFirstDescendant(cf => cf.ByName("OK"))?.AsButton();
@@ -547,9 +594,18 @@ namespace Automatyczne_Klawisze
                             }
                         }
 
+                        // === OBSŁUGA REZULTATÓW LOGOWANIA ===
                         if (wymagaKonwersji)
                         {
                             powodBledu = "Baza wymaga konwersji (zbyt stara wersja).";
+                            return false;
+                        }
+
+                        if (nowszaWersja)
+                        {
+                            powodBledu = string.IsNullOrEmpty(wersjaNowszejBazy)
+                                ? "Baza pochodzi z nowszej wersji programu."
+                                : $"Baza pochodzi z nowszej wersji programu ({wersjaNowszejBazy}).";
                             return false;
                         }
 
@@ -581,7 +637,6 @@ namespace Automatyczne_Klawisze
                     AutomationElement btnOdznacz = null;
                     AutomationElement btnZapisz = null;
 
-                    // Dajemy Enovie 7.5 sekundy (15 prób x 500ms) na pokazanie okna licencji
                     for (int j = 0; j < 15; j++)
                     {
                         pauseEvent.Wait(token);
@@ -592,7 +647,6 @@ namespace Automatyczne_Klawisze
                         foreach (var wnd in wszystkieOkna)
                         {
                             var localWnd = wnd;
-                            // Szukamy okna po obecności przycisku Zapisz
                             btnZapisz = UiaSafeCall(() => localWnd.FindFirstDescendant(cf => cf.ByName("Zapisz i zamknij")), UiaPollTimeout);
 
                             if (btnZapisz != null)
@@ -603,7 +657,6 @@ namespace Automatyczne_Klawisze
                             }
                         }
 
-                        // Jeśli znaleźliśmy przycisk zapisu, nie ma sensu czekać dłużej
                         if (btnZapisz != null) break;
 
                         AktywnySleep(500, token, pauseEvent);
@@ -621,7 +674,6 @@ namespace Automatyczne_Klawisze
                             {
                                 if (btnOdznacz.IsEnabled)
                                 {
-                                    // Używamy patternu wywołania, bezpieczniejsze dla Ribbonów
                                     var invPattern = btnOdznacz.Patterns.Invoke.PatternOrDefault;
                                     if (invPattern != null) invPattern.Invoke();
                                     else btnOdznacz.Click();
@@ -646,7 +698,6 @@ namespace Automatyczne_Klawisze
                         }
                         catch { }
 
-                        // Solidne opóźnienie po zamknięciu licencji, by UI wróciło do normy przed importem XML
                         AktywnySleep(3500, token, pauseEvent);
                     }
                     else

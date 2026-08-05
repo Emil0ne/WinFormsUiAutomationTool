@@ -271,7 +271,7 @@ namespace Automatyczne_Klawisze
                             log("Zatwierdzam konwersję (klikam OK)...");
                             try
                             {
-                                var btnOkKonwersja = konwersjaWindow.FindFirstDescendant(cf => cf.ByName("OK"))?.AsButton();
+                                var btnOkKonwersja = konwersjaWindow.FindFirstDescendant(cf => cf.ByName("OK"))?.AsButton() ?? konwersjaWindow.FindFirstDescendant(cf => cf.ByName("Tak"))?.AsButton();
                                 if (btnOkKonwersja != null) btnOkKonwersja.Click(); else { konwersjaWindow.Focus(); Keyboard.Press(VirtualKeyShort.ENTER); }
                             }
                             catch { }
@@ -288,26 +288,97 @@ namespace Automatyczne_Klawisze
                                 czasKonwersjiMs += 3000;
 
                                 var localAppTest = app;
-                                var aktualneOkna = UiaSafeCall(() => localAppTest.GetAllTopLevelWindows(automation), UiaPollTimeout, Array.Empty<Window>());
+                                var aktualneOkna = UiaSafeCall(() => localAppTest.GetAllTopLevelWindows(automation), TimeSpan.FromSeconds(3), null);
 
-                                bool czyMieli = aktualneOkna.Any(w => { try { return w.Name != null && w.Name.Contains("Konwersja bazy"); } catch { return false; } });
-                                bool czySkonczyl = aktualneOkna.Any(w => { try { return w.Name != null && (w.Name.Contains("Pobrane licencje") || w.Name.Contains("Informacja") || w.Name.Contains("enova365")); } catch { return false; } });
-
-                                if (!czyMieli || czySkonczyl)
+                                if (aktualneOkna == null || aktualneOkna.Length == 0)
                                 {
-                                    var mainWindowTest = aktualneOkna.FirstOrDefault(w => { try { return w.Name != null && w.Name.Contains("enova365"); } catch { return false; } });
-                                    if (mainWindowTest != null)
+                                    if (startedProcess.HasExited)
                                     {
-                                        var modale = UiaSafeCall(() => mainWindowTest.ModalWindows, UiaPollTimeout, Array.Empty<Window>());
-                                        if (modale.Any(m => { try { return m.Name != null && m.Name.Contains("Konwersja bazy"); } catch { return false; } })) continue;
+                                        powodBledu = "Proces Enovy niespodziewanie się zakończył.";
+                                        break;
                                     }
-                                    konwersjaZakonczona = true; break;
+                                    if (czasKonwersjiMs % 60000 == 0) log($"(info) Enova nie odpowiada (mieli dane). Konwersja trwa... ({czasKonwersjiMs / 60000} min)");
+                                    continue;
+                                }
+
+                                // 1. TWARDY WARUNEK SUKCESU (Pojawiły się licencje lub informacja po zalogowaniu)
+                                bool licencjeWisi = aktualneOkna.Any(w => { try { return w.Name != null && (w.Name.Contains("Pobrane licencje") || w.Name.Contains("Informacja")); } catch { return false; } });
+                                if (licencjeWisi)
+                                {
+                                    log("Wykryto okno licencji/informacji. Konwersja zakończona!");
+                                    konwersjaZakonczona = true;
+                                    break;
+                                }
+
+                                // 2. TWARDY WARUNEK BŁĘDU
+                                bool bladWisi = aktualneOkna.Any(w => { try { return w.Name != null && (w.Name.Contains("Stop") || w.Name.Contains("Błąd") || w.Name.Contains("Raport błędu")); } catch { return false; } });
+                                if (bladWisi)
+                                {
+                                    powodBledu = "Wystąpił błąd Enovy podczas trwania konwersji.";
+                                    konwersjaZakonczona = false;
+                                    break;
+                                }
+
+                                // 3. SPRAWDZANIE CZY DALEJ MIELI
+                                bool logowanieWisi = aktualneOkna.Any(w => { try { return w.Name != null && w.Name.Contains("Logowanie do bazy"); } catch { return false; } });
+                                bool proszeCzekacWisi = aktualneOkna.Any(w => { try { return w.Name != null && w.Name.Contains("Proszę czekać"); } catch { return false; } });
+                                bool konwersjaWisi = aktualneOkna.Any(w => { try { return w.Name != null && w.Name.Contains("Konwersja bazy"); } catch { return false; } });
+
+                                if (logowanieWisi && !konwersjaWisi && !proszeCzekacWisi && !bladWisi)
+                                {
+                                    var oknoLogowaniaAktualne = aktualneOkna.FirstOrDefault(w => w.Name != null && w.Name.Contains("Logowanie do bazy"));
+                                    if (oknoLogowaniaAktualne != null)
+                                    {
+                                        var modale = UiaSafeCall(() => oknoLogowaniaAktualne.ModalWindows, UiaPollTimeout, Array.Empty<Window>());
+                                        konwersjaWisi = modale.Any(m => { try { return m.Name != null && m.Name.Contains("Konwersja bazy"); } catch { return false; } });
+                                        proszeCzekacWisi = modale.Any(m => { try { return m.Name != null && m.Name.Contains("Proszę czekać"); } catch { return false; } });
+                                        bladWisi = modale.Any(m => { try { return m.Name != null && (m.Name.Contains("Stop") || m.Name.Contains("Błąd")); } catch { return false; } });
+
+                                        if (!konwersjaWisi && !proszeCzekacWisi)
+                                        {
+                                            var tekstKonwersji = UiaSafeCall(() => oknoLogowaniaAktualne.FindFirstDescendant(cf => cf.ByName("Konwersja bazy")), TimeSpan.FromSeconds(1));
+                                            if (tekstKonwersji != null) konwersjaWisi = true;
+                                        }
+                                    }
+                                }
+
+                                // 4. KONTROLA KOŃCOWA (Zniknęły okna logowania)
+                                if (!logowanieWisi && !konwersjaWisi && !proszeCzekacWisi)
+                                {
+                                    AktywnySleep(2000, token, pauseEvent); // Czekamy na ustabilizowanie
+                                    var weryfikacjaOkien = UiaSafeCall(() => app.GetAllTopLevelWindows(automation), UiaPollTimeout, Array.Empty<Window>());
+
+                                    bool werLicencje = weryfikacjaOkien.Any(w => w.Name != null && (w.Name.Contains("Pobrane licencje") || w.Name.Contains("Informacja")));
+                                    if (werLicencje)
+                                    {
+                                        log("Wykryto okno licencji/informacji. Konwersja zakończona!");
+                                        konwersjaZakonczona = true;
+                                        break;
+                                    }
+
+                                    bool werLogowanie = weryfikacjaOkien.Any(w => w.Name != null && w.Name.Contains("Logowanie do bazy"));
+                                    bool werCzekac = weryfikacjaOkien.Any(w => w.Name != null && w.Name.Contains("Proszę czekać"));
+
+                                    if (!werLogowanie && !werCzekac)
+                                    {
+                                        konwersjaZakonczona = true;
+                                        break;
+                                    }
                                 }
 
                                 if (czasKonwersjiMs % 60000 == 0) { log($"(info) Konwersja w toku... ({czasKonwersjiMs / 60000} min)"); }
                             }
 
-                            if (!konwersjaZakonczona) { powodBledu = "Przekroczono czas oczekiwania na konwersję (10 minut)."; return false; }
+                            if (!konwersjaZakonczona && string.IsNullOrEmpty(powodBledu))
+                            {
+                                powodBledu = "Przekroczono czas oczekiwania na konwersję (10 minut).";
+                                return false;
+                            }
+                            else if (!konwersjaZakonczona)
+                            {
+                                return false;
+                            }
+
                             log("Zakończono proces konwersji w tle.");
                             AktywnySleep(2000, token, pauseEvent);
                         }
