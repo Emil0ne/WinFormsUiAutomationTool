@@ -136,7 +136,7 @@
             label4.Name = "label4";
             label4.Size = new Size(94, 15);
             label4.TabIndex = 6;
-            label4.Text = "Hasło operatora:";
+            label4.Text = "Login operatora:";
             // 
             // label5
             // 

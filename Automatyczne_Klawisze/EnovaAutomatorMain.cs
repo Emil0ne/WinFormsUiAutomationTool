@@ -65,6 +65,24 @@ namespace Automatyczne_Klawisze
         // (np. raz po restarcie procesu) i chcemy dać UI więcej czasu na jednorazową odpowiedź.
         private static readonly TimeSpan UiaPollTimeout = TimeSpan.FromSeconds(2);
 
+
+        // =======================================================
+        // POMOCNICZA METODA DO ZAPISU LOGÓW DO PLIKU TXT
+        // =======================================================
+        public static void ZapiszLogiDoPliku(IEnumerable<string> linieLogow, Action<string> log)
+        {
+            try
+            {
+                string sciezkaPliku = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), $"Logi_Enova_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
+                File.WriteAllLines(sciezkaPliku, linieLogow);
+                log($"📁 Pomyślnie wyeksportowano logi do pliku na Pulpicie: {Path.GetFileName(sciezkaPliku)}");
+            }
+            catch (Exception ex)
+            {
+                log($"❌ Błąd podczas zapisu logów do pliku: {ex.Message}");
+            }
+        }
+
         // =======================================================
         // GŁÓWNA FUNKCJA STERUJĄCA PĘTLĄ I RAPORTAMI
         // =======================================================
@@ -633,12 +651,44 @@ namespace Automatyczne_Klawisze
                         var modaleOtw = UiaSafeCall(() => localMainWindow4.ModalWindows, UiaCallTimeout, Array.Empty<Window>());
                         oknoOtwierania = modaleOtw.FirstOrDefault(m => m.Name != null && (m.Name.Contains("Otwieranie") || m.Name.Contains("Open")));
 
-                        if (oknoOtwierania == null)
+                        Window oknoBleduUprawnien = modaleOtw.FirstOrDefault(m => m.Name != null && (m.Name.Contains("Stop") || m.Name.Contains("Błąd")));
+
+                        Window[] topWindows = Array.Empty<Window>();
+                        if (oknoOtwierania == null || oknoBleduUprawnien == null)
                         {
                             var localApp6 = app;
-                            var topWindows = UiaSafeCall(() => localApp6.GetAllTopLevelWindows(automation), UiaCallTimeout, Array.Empty<Window>());
-                            oknoOtwierania = topWindows.FirstOrDefault(m => m.Name != null && (m.Name.Contains("Otwieranie") || m.Name.Contains("Open")));
+                            topWindows = UiaSafeCall(() => localApp6.GetAllTopLevelWindows(automation), UiaCallTimeout, Array.Empty<Window>());
+
+                            if (oknoOtwierania == null)
+                                oknoOtwierania = topWindows.FirstOrDefault(m => m.Name != null && (m.Name.Contains("Otwieranie") || m.Name.Contains("Open")));
+
+                            if (oknoBleduUprawnien == null)
+                                oknoBleduUprawnien = topWindows.FirstOrDefault(w => w.Name != null && (w.Name.Contains("Stop") || w.Name.Contains("Błąd")));
                         }
+
+                        // Konto operatora może nie mieć uprawnień do importu XML (np. "inny system praw").
+                        // W takim wypadku okno "Otwieranie" nigdy się nie pojawi - zamiast czekać na nie
+                        // przez pełne 20 prób, wykrywamy błąd od razu, klikamy OK i przerywamy przetwarzanie
+                        // tej bazy z czytelnym komunikatem.
+                        if (oknoBleduUprawnien != null)
+                        {
+                            log("❌ Wykryto brak uprawnień przy próbie importu XML.");
+                            try
+                            {
+                                var btnOkUprawnienia = oknoBleduUprawnien.FindFirstDescendant(cf => cf.ByName("OK"))?.AsButton();
+                                if (btnOkUprawnienia != null) btnOkUprawnienia.Click();
+                                else { oknoBleduUprawnien.Focus(); Keyboard.Press(VirtualKeyShort.ENTER); }
+                            }
+                            catch (Exception exKlik)
+                            {
+                                log($"(info) Nie udało się kliknąć OK na oknie błędu uprawnień (element już nieaktualny): {exKlik.Message}");
+                            }
+                            AktywnySleep(1000, token, pauseEvent);
+
+                            powodBledu = "Brak uprawnień do importu XML (konto operatora ma inny system praw).";
+                            return false;
+                        }
+
                         if (oknoOtwierania != null) break;
                         AktywnySleep(500, token, pauseEvent);
                     }
@@ -659,13 +709,37 @@ namespace Automatyczne_Klawisze
                             var localMainWindow5 = mainWindow;
                             var modaleInfo = UiaSafeCall(() => localMainWindow5.ModalWindows, UiaCallTimeout, Array.Empty<Window>());
                             oknoInformacji = modaleInfo.FirstOrDefault(m => m.Name != null && (m.Name.Contains("Informacja - enova365") || m.Name.Contains("Informacja")));
+                            Window oknoBleduUprawnien2 = modaleInfo.FirstOrDefault(m => m.Name != null && (m.Name.Contains("Stop") || m.Name.Contains("Błąd")));
 
-                            if (oknoInformacji == null)
+                            if (oknoInformacji == null || oknoBleduUprawnien2 == null)
                             {
                                 var localApp7 = app;
                                 var topWindows = UiaSafeCall(() => localApp7.GetAllTopLevelWindows(automation), UiaCallTimeout, Array.Empty<Window>());
-                                oknoInformacji = topWindows.FirstOrDefault(m => m.Name != null && (m.Name.Contains("Informacja - enova365") || m.Name.Contains("Informacja")));
+                                if (oknoInformacji == null)
+                                    oknoInformacji = topWindows.FirstOrDefault(m => m.Name != null && (m.Name.Contains("Informacja - enova365") || m.Name.Contains("Informacja")));
+                                if (oknoBleduUprawnien2 == null)
+                                    oknoBleduUprawnien2 = topWindows.FirstOrDefault(w => w.Name != null && (w.Name.Contains("Stop") || w.Name.Contains("Błąd")));
                             }
+
+                            if (oknoBleduUprawnien2 != null)
+                            {
+                                log("❌ Wykryto brak uprawnień po wskazaniu pliku XML do importu.");
+                                try
+                                {
+                                    var btnOkUprawnienia2 = oknoBleduUprawnien2.FindFirstDescendant(cf => cf.ByName("OK"))?.AsButton();
+                                    if (btnOkUprawnienia2 != null) btnOkUprawnienia2.Click();
+                                    else { oknoBleduUprawnien2.Focus(); Keyboard.Press(VirtualKeyShort.ENTER); }
+                                }
+                                catch (Exception exKlik)
+                                {
+                                    log($"(info) Nie udało się kliknąć OK na oknie błędu uprawnień (element już nieaktualny): {exKlik.Message}");
+                                }
+                                AktywnySleep(1000, token, pauseEvent);
+
+                                powodBledu = "Brak uprawnień do importu XML (konto operatora ma inny system praw).";
+                                return false;
+                            }
+
                             if (oknoInformacji != null) break;
                             AktywnySleep(500, token, pauseEvent);
                         }
@@ -840,3 +914,4 @@ namespace Automatyczne_Klawisze
         }
     }
 }
+

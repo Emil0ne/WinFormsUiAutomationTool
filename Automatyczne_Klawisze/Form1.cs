@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,6 +20,50 @@ namespace Automatyczne_Klawisze
         public Form1()
         {
             InitializeComponent();
+
+            // --- NAKŁADANIE CZYSTEGO, CIEMNEGO MOTYWU ---
+            ZastosujCiemnyMotyw();
+        }
+
+        private void ZastosujCiemnyMotyw()
+        {
+            // Kolor tła głównego okna oraz tekst domyślny
+            this.BackColor = Color.FromArgb(32, 32, 32);
+            this.ForeColor = Color.FromArgb(240, 240, 240);
+
+            // Rekurencyjne barwienie wszystkich kontrolek w oknie
+            foreach (Control ctrl in this.Controls)
+            {
+                ZastosujKoloryDlaKontrolki(ctrl);
+            }
+        }
+
+        private void ZastosujKoloryDlaKontrolki(Control ctrl)
+        {
+            if (ctrl is TextBox || ctrl is RichTextBox || ctrl is CheckedListBox)
+            {
+                ctrl.BackColor = Color.FromArgb(45, 45, 48); // Ciemny grafit do edycji i logów
+                ctrl.ForeColor = Color.FromArgb(240, 240, 240); // Jasny tekst
+            }
+            else if (ctrl is Button)
+            {
+                ctrl.BackColor = Color.FromArgb(60, 60, 65);  // Ciemniejszy przycisk
+                ctrl.ForeColor = Color.FromArgb(255, 255, 255); // Jasna, czytelna czcionka
+            }
+            else if (ctrl is Label)
+            {
+                ctrl.ForeColor = Color.FromArgb(240, 240, 240);
+                ctrl.BackColor = Color.Transparent;
+            }
+
+            // Jeśli kontrolka posiada podkontrolki (np. panele, grupy), przechodzimy je rekurencyjnie
+            if (ctrl.HasChildren)
+            {
+                foreach (Control child in ctrl.Controls)
+                {
+                    ZastosujKoloryDlaKontrolki(child);
+                }
+            }
         }
 
         private void btnWczytajBazy_Click(object sender, EventArgs e)
