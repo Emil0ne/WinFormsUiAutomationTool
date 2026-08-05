@@ -20,9 +20,13 @@ namespace Automatyczne_Klawisze
         public Form1()
         {
             InitializeComponent();
-
+            tabControl1.DrawMode = TabDrawMode.OwnerDrawFixed;
+            tabControl1.DrawItem += tabControl1_DrawItem;
             // --- NAKŁADANIE CZYSTEGO, CIEMNEGO MOTYWU ---
             ZastosujCiemnyMotyw();
+
+
+
         }
 
         private void ZastosujCiemnyMotyw()
@@ -42,21 +46,27 @@ namespace Automatyczne_Klawisze
         {
             if (ctrl is TextBox || ctrl is RichTextBox || ctrl is CheckedListBox)
             {
-                ctrl.BackColor = Color.FromArgb(45, 45, 48); // Ciemny grafit do edycji i logów
+                ctrl.BackColor = Color.FromArgb(45, 45, 48); // Ciemny grafit
                 ctrl.ForeColor = Color.FromArgb(240, 240, 240); // Jasny tekst
             }
             else if (ctrl is Button)
             {
-                ctrl.BackColor = Color.FromArgb(60, 60, 65);  // Ciemniejszy przycisk
-                ctrl.ForeColor = Color.FromArgb(255, 255, 255); // Jasna, czytelna czcionka
+                ctrl.BackColor = Color.FromArgb(60, 60, 65);
+                ctrl.ForeColor = Color.FromArgb(255, 255, 255);
+                ((Button)ctrl).FlatStyle = FlatStyle.Flat; // Spłaszcza obramowanie
+                ((Button)ctrl).FlatAppearance.BorderColor = Color.FromArgb(80, 80, 80);
             }
             else if (ctrl is Label)
             {
                 ctrl.ForeColor = Color.FromArgb(240, 240, 240);
                 ctrl.BackColor = Color.Transparent;
             }
+            else if (ctrl is TabPage) // <--- DODANY WARUNEK DLA ZAKŁADEK
+            {
+                ctrl.BackColor = Color.FromArgb(32, 32, 32);
+                ctrl.ForeColor = Color.FromArgb(240, 240, 240);
+            }
 
-            // Jeśli kontrolka posiada podkontrolki (np. panele, grupy), przechodzimy je rekurencyjnie
             if (ctrl.HasChildren)
             {
                 foreach (Control child in ctrl.Controls)
@@ -64,6 +74,32 @@ namespace Automatyczne_Klawisze
                     ZastosujKoloryDlaKontrolki(child);
                 }
             }
+        }
+
+        private void tabControl1_DrawItem(object sender, DrawItemEventArgs e)
+        {
+            Graphics g = e.Graphics;
+            TabPage tabPage = tabControl1.TabPages[e.Index];
+            Rectangle tabBounds = tabControl1.GetTabRect(e.Index);
+
+            // Tło zakładki w zależności od tego, czy jest aktywna
+            if (e.State == DrawItemState.Selected)
+            {
+                g.FillRectangle(new SolidBrush(Color.FromArgb(45, 45, 48)), e.Bounds); // Jaśniejsza dla aktywnej
+            }
+            else
+            {
+                g.FillRectangle(new SolidBrush(Color.FromArgb(32, 32, 32)), e.Bounds); // Ciemniejsza dla nieaktywnej
+            }
+
+            // Centrowanie i rysowanie tekstu
+            StringFormat stringFlags = new StringFormat();
+            stringFlags.Alignment = StringAlignment.Center;
+            stringFlags.LineAlignment = StringAlignment.Center;
+
+            Brush textBrush = (e.State == DrawItemState.Selected) ? new SolidBrush(Color.White) : new SolidBrush(Color.FromArgb(150, 150, 150));
+
+            g.DrawString(tabPage.Text, e.Font, textBrush, tabBounds, new StringFormat(stringFlags));
         }
 
         private void btnWczytajBazy_Click(object sender, EventArgs e)
@@ -188,7 +224,7 @@ namespace Automatyczne_Klawisze
             Task.Run(() =>
             {
                 // Przekazujemy _cts.Token oraz _pauseEvent do naszej głównej metody
-                EnovaAutomator.Uruchom(bazyDoPrzetworzenia, login, haslo, nowyOp, hasloOp, sciezkaXml, sciezkaEnova, _cts.Token, _pauseEvent, (wiadomosc) =>
+                EnovaOperatorzy.Uruchom(bazyDoPrzetworzenia, login, haslo, nowyOp, hasloOp, sciezkaXml, sciezkaEnova, _cts.Token, _pauseEvent, (wiadomosc) =>
                 {
                     Invoke(new Action(() => rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] {wiadomosc}\n")));
 
@@ -298,9 +334,63 @@ namespace Automatyczne_Klawisze
         {
             var linie = rtbLogi.Lines;
 
-            EnovaAutomator.ZapiszLogiDoPliku(linie, (komunikat) =>
+            EnovaOperatorzy.ZapiszLogiDoPliku(linie, (komunikat) =>
             {
                 rtbLogi.AppendText(Environment.NewLine + komunikat);
+            });
+        }
+
+        private void btnAktualizuj_Click(object sender, EventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtSciezkaEnova.Text) || !File.Exists(txtSciezkaEnova.Text))
+            {
+                rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] BŁĄD: Nie wybrano prawidłowego pliku uruchomieniowego Enova (.exe)!\n");
+                return;
+            }
+
+            if (clbBazy.CheckedItems.Count == 0)
+            {
+                rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] BŁĄD: Musisz zaznaczyć przynajmniej jedną bazę na liście!\n");
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(txtEnovaUser.Text))
+            {
+                rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] BŁĄD: Wprowadź login do Enovy!\n");
+                return;
+            }
+
+            List<string> bazyDoPrzetworzenia = new List<string>();
+            foreach (var item in clbBazy.CheckedItems)
+            {
+                bazyDoPrzetworzenia.Add(item.ToString());
+            }
+
+            string login = txtEnovaUser.Text;
+            string haslo = txtEnovaPass.Text;
+            string sciezkaEnova = txtSciezkaEnova.Text;
+
+            rtbLogi.AppendText($"\n[{DateTime.Now:HH:mm:ss}] 🔄 START AKTUALIZACJI / KONWERSJI! Bazy do przetworzenia: {bazyDoPrzetworzenia.Count}\n");
+
+            // ==========================================
+            // INICJALIZACJA KONTROLERÓW WĄTKU
+            // ==========================================
+            _cts = new CancellationTokenSource();
+            _pauseEvent = new ManualResetEventSlim(true);
+            _isPaused = false;
+            btnPauza.Text = "Pauza";
+
+            Task.Run(() =>
+            {
+                EnovaAktualizacja.Uruchom(bazyDoPrzetworzenia, login, haslo, sciezkaEnova, _cts.Token, _pauseEvent, (wiadomosc) =>
+                {
+                    Invoke(new Action(() => rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] {wiadomosc}\n")));
+
+                    Invoke(new Action(() =>
+                    {
+                        rtbLogi.SelectionStart = rtbLogi.Text.Length;
+                        rtbLogi.ScrollToCaret();
+                    }));
+                });
             });
         }
     }

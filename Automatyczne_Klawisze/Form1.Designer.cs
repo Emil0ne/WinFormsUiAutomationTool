@@ -52,11 +52,18 @@
             btnPauza = new Button();
             btnWyczyscLogi = new Button();
             btnZapiszLogi = new Button();
+            tabControl1 = new TabControl();
+            dodanieOperatora = new TabPage();
+            zmianaWersji = new TabPage();
+            btnAktualizuj = new Button();
+            tabControl1.SuspendLayout();
+            dodanieOperatora.SuspendLayout();
+            zmianaWersji.SuspendLayout();
             SuspendLayout();
             // 
             // btnWczytajBazy
             // 
-            btnWczytajBazy.Location = new Point(16, 13);
+            btnWczytajBazy.Location = new Point(12, 129);
             btnWczytajBazy.Name = "btnWczytajBazy";
             btnWczytajBazy.Size = new Size(116, 23);
             btnWczytajBazy.TabIndex = 0;
@@ -67,16 +74,16 @@
             // clbBazy
             // 
             clbBazy.FormattingEnabled = true;
-            clbBazy.Location = new Point(16, 78);
+            clbBazy.Location = new Point(12, 194);
             clbBazy.Name = "clbBazy";
-            clbBazy.Size = new Size(238, 148);
+            clbBazy.Size = new Size(238, 112);
             clbBazy.TabIndex = 1;
             clbBazy.SelectedIndexChanged += clbBazy_SelectedIndexChanged;
             // 
             // label1
             // 
             label1.AutoSize = true;
-            label1.Location = new Point(16, 299);
+            label1.Location = new Point(12, 74);
             label1.Name = "label1";
             label1.Size = new Size(92, 15);
             label1.TabIndex = 2;
@@ -84,7 +91,7 @@
             // 
             // txtEnovaUser
             // 
-            txtEnovaUser.Location = new Point(114, 296);
+            txtEnovaUser.Location = new Point(110, 71);
             txtEnovaUser.Name = "txtEnovaUser";
             txtEnovaUser.Size = new Size(140, 23);
             txtEnovaUser.TabIndex = 3;
@@ -92,7 +99,7 @@
             // label2
             // 
             label2.AutoSize = true;
-            label2.Location = new Point(16, 328);
+            label2.Location = new Point(12, 103);
             label2.Name = "label2";
             label2.Size = new Size(92, 15);
             label2.TabIndex = 4;
@@ -101,14 +108,14 @@
             // 
             // txtEnovaPass
             // 
-            txtEnovaPass.Location = new Point(114, 325);
+            txtEnovaPass.Location = new Point(110, 100);
             txtEnovaPass.Name = "txtEnovaPass";
             txtEnovaPass.Size = new Size(140, 23);
             txtEnovaPass.TabIndex = 5;
             // 
             // txtNoweHaslo
             // 
-            txtNoweHaslo.Location = new Point(114, 383);
+            txtNoweHaslo.Location = new Point(104, 39);
             txtNoweHaslo.Name = "txtNoweHaslo";
             txtNoweHaslo.Size = new Size(140, 23);
             txtNoweHaslo.TabIndex = 9;
@@ -116,7 +123,7 @@
             // label3
             // 
             label3.AutoSize = true;
-            label3.Location = new Point(16, 386);
+            label3.Location = new Point(6, 42);
             label3.Name = "label3";
             label3.Size = new Size(94, 15);
             label3.TabIndex = 8;
@@ -124,7 +131,7 @@
             // 
             // txtNowyOperator
             // 
-            txtNowyOperator.Location = new Point(114, 354);
+            txtNowyOperator.Location = new Point(104, 10);
             txtNowyOperator.Name = "txtNowyOperator";
             txtNowyOperator.Size = new Size(140, 23);
             txtNowyOperator.TabIndex = 7;
@@ -132,7 +139,7 @@
             // label4
             // 
             label4.AutoSize = true;
-            label4.Location = new Point(16, 357);
+            label4.Location = new Point(6, 13);
             label4.Name = "label4";
             label4.Size = new Size(94, 15);
             label4.TabIndex = 6;
@@ -141,7 +148,7 @@
             // label5
             // 
             label5.AutoSize = true;
-            label5.Location = new Point(16, 415);
+            label5.Location = new Point(6, 71);
             label5.Name = "label5";
             label5.Size = new Size(85, 15);
             label5.TabIndex = 10;
@@ -150,7 +157,7 @@
             // 
             // txtSciezkaXml
             // 
-            txtSciezkaXml.Location = new Point(16, 441);
+            txtSciezkaXml.Location = new Point(6, 97);
             txtSciezkaXml.Name = "txtSciezkaXml";
             txtSciezkaXml.Size = new Size(238, 23);
             txtSciezkaXml.TabIndex = 11;
@@ -158,7 +165,7 @@
             // 
             // btnWybierzXml
             // 
-            btnWybierzXml.Location = new Point(114, 412);
+            btnWybierzXml.Location = new Point(104, 68);
             btnWybierzXml.Name = "btnWybierzXml";
             btnWybierzXml.Size = new Size(140, 23);
             btnWybierzXml.TabIndex = 12;
@@ -168,7 +175,7 @@
             // 
             // btnStart
             // 
-            btnStart.Location = new Point(260, 525);
+            btnStart.Location = new Point(6, 126);
             btnStart.Name = "btnStart";
             btnStart.Size = new Size(232, 23);
             btnStart.TabIndex = 13;
@@ -188,7 +195,7 @@
             // 
             // btnZaznaczWszystko
             // 
-            btnZaznaczWszystko.Location = new Point(16, 42);
+            btnZaznaczWszystko.Location = new Point(12, 158);
             btnZaznaczWszystko.Name = "btnZaznaczWszystko";
             btnZaznaczWszystko.Size = new Size(116, 23);
             btnZaznaczWszystko.TabIndex = 15;
@@ -198,7 +205,7 @@
             // 
             // btnOdznaczWszystko
             // 
-            btnOdznaczWszystko.Location = new Point(138, 42);
+            btnOdznaczWszystko.Location = new Point(134, 158);
             btnOdznaczWszystko.Name = "btnOdznaczWszystko";
             btnOdznaczWszystko.Size = new Size(116, 23);
             btnOdznaczWszystko.TabIndex = 16;
@@ -208,7 +215,7 @@
             // 
             // btnWybierzEnova
             // 
-            btnWybierzEnova.Location = new Point(151, 235);
+            btnWybierzEnova.Location = new Point(147, 10);
             btnWybierzEnova.Name = "btnWybierzEnova";
             btnWybierzEnova.Size = new Size(103, 23);
             btnWybierzEnova.TabIndex = 19;
@@ -218,7 +225,7 @@
             // 
             // txtSciezkaEnova
             // 
-            txtSciezkaEnova.Location = new Point(16, 264);
+            txtSciezkaEnova.Location = new Point(12, 39);
             txtSciezkaEnova.Name = "txtSciezkaEnova";
             txtSciezkaEnova.Size = new Size(238, 23);
             txtSciezkaEnova.TabIndex = 18;
@@ -226,7 +233,7 @@
             // label6
             // 
             label6.AutoSize = true;
-            label6.Location = new Point(16, 238);
+            label6.Location = new Point(12, 13);
             label6.Name = "label6";
             label6.Size = new Size(132, 15);
             label6.TabIndex = 17;
@@ -234,7 +241,7 @@
             // 
             // btnStop
             // 
-            btnStop.Location = new Point(632, 525);
+            btnStop.Location = new Point(491, 525);
             btnStop.Name = "btnStop";
             btnStop.Size = new Size(113, 23);
             btnStop.TabIndex = 20;
@@ -244,7 +251,7 @@
             // 
             // btnPauza
             // 
-            btnPauza.Location = new Point(498, 525);
+            btnPauza.Location = new Point(357, 525);
             btnPauza.Name = "btnPauza";
             btnPauza.Size = new Size(128, 23);
             btnPauza.TabIndex = 21;
@@ -272,37 +279,83 @@
             btnZapiszLogi.UseVisualStyleBackColor = true;
             btnZapiszLogi.Click += btnZapiszLogi_Click;
             // 
+            // tabControl1
+            // 
+            tabControl1.Controls.Add(dodanieOperatora);
+            tabControl1.Controls.Add(zmianaWersji);
+            tabControl1.Location = new Point(12, 312);
+            tabControl1.Name = "tabControl1";
+            tabControl1.SelectedIndex = 0;
+            tabControl1.Size = new Size(345, 207);
+            tabControl1.TabIndex = 24;
+            // 
+            // dodanieOperatora
+            // 
+            dodanieOperatora.Controls.Add(label4);
+            dodanieOperatora.Controls.Add(txtNowyOperator);
+            dodanieOperatora.Controls.Add(label3);
+            dodanieOperatora.Controls.Add(txtNoweHaslo);
+            dodanieOperatora.Controls.Add(label5);
+            dodanieOperatora.Controls.Add(txtSciezkaXml);
+            dodanieOperatora.Controls.Add(btnWybierzXml);
+            dodanieOperatora.Controls.Add(btnStart);
+            dodanieOperatora.Location = new Point(4, 24);
+            dodanieOperatora.Name = "dodanieOperatora";
+            dodanieOperatora.Padding = new Padding(3);
+            dodanieOperatora.Size = new Size(337, 179);
+            dodanieOperatora.TabIndex = 0;
+            dodanieOperatora.Text = "Dodanie operatora";
+            dodanieOperatora.UseVisualStyleBackColor = true;
+            // 
+            // zmianaWersji
+            // 
+            zmianaWersji.Controls.Add(btnAktualizuj);
+            zmianaWersji.Location = new Point(4, 24);
+            zmianaWersji.Name = "zmianaWersji";
+            zmianaWersji.Padding = new Padding(3);
+            zmianaWersji.Size = new Size(337, 179);
+            zmianaWersji.TabIndex = 1;
+            zmianaWersji.Text = "Zmiana wersji";
+            zmianaWersji.UseVisualStyleBackColor = true;
+            // 
+            // btnAktualizuj
+            // 
+            btnAktualizuj.Location = new Point(51, 76);
+            btnAktualizuj.Name = "btnAktualizuj";
+            btnAktualizuj.Size = new Size(232, 23);
+            btnAktualizuj.TabIndex = 14;
+            btnAktualizuj.Text = "URUCHOM AKTUALIZACJĘ BAZ";
+            btnAktualizuj.UseVisualStyleBackColor = true;
+            btnAktualizuj.Click += btnAktualizuj_Click;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(944, 560);
+            Controls.Add(btnWczytajBazy);
+            Controls.Add(tabControl1);
+            Controls.Add(clbBazy);
             Controls.Add(btnZapiszLogi);
+            Controls.Add(label1);
+            Controls.Add(btnOdznaczWszystko);
             Controls.Add(btnWyczyscLogi);
+            Controls.Add(txtEnovaUser);
+            Controls.Add(btnZaznaczWszystko);
             Controls.Add(btnPauza);
+            Controls.Add(label2);
             Controls.Add(btnStop);
             Controls.Add(btnWybierzEnova);
+            Controls.Add(txtEnovaPass);
+            Controls.Add(rtbLogi);
             Controls.Add(txtSciezkaEnova);
             Controls.Add(label6);
-            Controls.Add(btnOdznaczWszystko);
-            Controls.Add(btnZaznaczWszystko);
-            Controls.Add(rtbLogi);
-            Controls.Add(btnStart);
-            Controls.Add(btnWybierzXml);
-            Controls.Add(txtSciezkaXml);
-            Controls.Add(label5);
-            Controls.Add(txtNoweHaslo);
-            Controls.Add(label3);
-            Controls.Add(txtNowyOperator);
-            Controls.Add(label4);
-            Controls.Add(txtEnovaPass);
-            Controls.Add(label2);
-            Controls.Add(txtEnovaUser);
-            Controls.Add(label1);
-            Controls.Add(clbBazy);
-            Controls.Add(btnWczytajBazy);
             Name = "Form1";
             Text = "Form1";
+            tabControl1.ResumeLayout(false);
+            dodanieOperatora.ResumeLayout(false);
+            dodanieOperatora.PerformLayout();
+            zmianaWersji.ResumeLayout(false);
             ResumeLayout(false);
             PerformLayout();
         }
@@ -333,5 +386,9 @@
         private Button btnPauza;
         private Button btnWyczyscLogi;
         private Button btnZapiszLogi;
+        private TabControl tabControl1;
+        private TabPage dodanieOperatora;
+        private TabPage zmianaWersji;
+        private Button btnAktualizuj;
     }
 }
