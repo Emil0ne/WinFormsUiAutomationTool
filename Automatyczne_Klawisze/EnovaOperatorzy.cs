@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
 using System.IO;
-using System.Text.RegularExpressions; // <--- Dodane do obsługi wyciągania numeru wersji
+using System.Text.RegularExpressions;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using FlaUI.UIA3;
@@ -16,7 +16,6 @@ namespace Automatyczne_Klawisze
 {
     public class EnovaOperatorzy
     {
-        // Elastyczne usypianie reagujące na Stop i Pauzę
         private static void AktywnySleep(int milliseconds, CancellationToken token, ManualResetEventSlim pauseEvent)
         {
             int step = 100;
@@ -30,9 +29,6 @@ namespace Automatyczne_Klawisze
             }
         }
 
-        // =======================================================
-        // BEZPIECZNY WRAPPER NA WYWOŁANIA UIA/COM
-        // =======================================================
         private static T UiaSafeCall<T>(Func<T> action, TimeSpan timeout, T fallback = default)
         {
             try
@@ -53,16 +49,13 @@ namespace Automatyczne_Klawisze
         private static readonly TimeSpan UiaCallTimeout = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan UiaPollTimeout = TimeSpan.FromSeconds(2);
 
-        // =======================================================
-        // POMOCNICZA METODA DO ZAPISU LOGÓW DO PLIKU TXT
-        // =======================================================
         public static void ZapiszLogiDoPliku(IEnumerable<string> linieLogow, Action<string> log)
         {
             try
             {
                 string sciezkaPliku = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), $"Logi_Enova_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
                 File.WriteAllLines(sciezkaPliku, linieLogow);
-                log($"📁 Pomyślnie wyeksportowano logi do pliku na Pulpicie: {Path.GetFileName(sciezkaPliku)}");
+                log($"📁 Pomyślnie wyeksportowano logi do pliku na Pulpici: {Path.GetFileName(sciezkaPliku)}");
             }
             catch (Exception ex)
             {
@@ -70,14 +63,11 @@ namespace Automatyczne_Klawisze
             }
         }
 
-        // =======================================================
-        // GŁÓWNA FUNKCJA STERUJĄCA PĘTLĄ I RAPORTAMI
-        // =======================================================
         public static void Uruchom(List<string> listaBaz, string login, string haslo, string nowyOperator, string hasloOperatora, string sciezkaXml, string sciezkaEnova, CancellationToken token, ManualResetEventSlim pauseEvent, Action<string> log)
         {
-            log($"Uruchamianie automatyzacji dla {listaBaz.Count} baz...");
+            log($"Uruchamianie automatyzacji dla {listaBaz.Count} baz..."); 
 
-            string plikRaportu = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), $"Raport_Bledow_Enova_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
+            string plikRaportu = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), $"Raport_Bledow_Enova_{DateTime.Now:yyyyMMdd_HHmmss}.txt");  
             List<string> bledneBazy = new List<string>();
 
             foreach (var nazwaBazy in listaBaz)
@@ -87,9 +77,9 @@ namespace Automatyczne_Klawisze
                     token.ThrowIfCancellationRequested();
                     pauseEvent.Wait(token);
 
-                    log($"\n==========================================");
-                    log($"---> ROZPOCZYNAM TEST BAZY: {nazwaBazy} <---");
-                    log($"==========================================");
+                    log($"\n==========================================");  
+                    log($"---> ROZPOCZYNAM TEST BAZY: {nazwaBazy} <---");  
+                    log($"==========================================");  
 
                     string powodBledu = "";
                     bool sukces = PrzetworzBaze(nazwaBazy, login, haslo, nowyOperator, hasloOperatora, sciezkaXml, sciezkaEnova, token, pauseEvent, log, out powodBledu);
@@ -97,7 +87,7 @@ namespace Automatyczne_Klawisze
                     if (!sukces)
                     {
                         bledneBazy.Add($"- {nazwaBazy}: {powodBledu}");
-                        log($"❌ BAZA '{nazwaBazy}' ZAKOŃCZONA BŁĘDEM: {powodBledu}");
+                        log($"❌ BAZA '{nazwaBazy}' ZAKOŃCZONA BŁĘDEM: {powodBledu}");  
                     }
                     else
                     {
@@ -106,7 +96,7 @@ namespace Automatyczne_Klawisze
                 }
                 catch (OperationCanceledException)
                 {
-                    log("\n🛑 AUTOMATYZACJA ZOSTAŁA PRZERWANA NA ŻĄDANIE UŻYTKOWNIKA.");
+                    log("\n🛑 AUTOMATYZACJA ZOSTAŁA PRZERWANA NA ŻĄDANIE UŻYTKOWNIKA.");  
                     break;
                 }
                 catch (Exception ex)
@@ -115,16 +105,16 @@ namespace Automatyczne_Klawisze
                 }
             }
 
-            log($"\n==========================================");
-            log($"🏁 ZAKOŃCZONO PRZETWARZANIE WSZYSTKICH BAZ.");
+            log($"\n==========================================");  
+            log($"🏁 ZAKOŃCZONO PRZETWARZANIE WSZYSTKICH BAZ.");  
 
             if (bledneBazy.Count > 0)
             {
-                log($"UWAGA: Wystąpiły błędy w {bledneBazy.Count} bazach.");
+                log($"UWAGA: Wystąpiły błędy w {bledneBazy.Count} bazach.");  
                 try
                 {
                     File.WriteAllLines(plikRaportu, bledneBazy);
-                    log($"Zapisano plik z raportem błędów na Pulpicie: {Path.GetFileName(plikRaportu)}");
+                    log($"Zapisano plik z raportem błędów na Pulpicie: {Path.GetFileName(plikRaportu)}");  
                 }
                 catch (Exception ex)
                 {
@@ -137,9 +127,6 @@ namespace Automatyczne_Klawisze
             }
         }
 
-        // =======================================================
-        // FUNKCJA PRZETWARZAJĄCA POJEDYNCZĄ BAZĘ
-        // =======================================================
         private static bool PrzetworzBaze(string nazwaBazy, string login, string haslo, string nowyOperator, string hasloOperatora, string sciezkaXml, string sciezkaEnova, CancellationToken token, ManualResetEventSlim pauseEvent, Action<string> log, out string powodBledu)
         {
             powodBledu = "";
@@ -150,7 +137,7 @@ namespace Automatyczne_Klawisze
             {
                 var processInfo = new ProcessStartInfo(sciezkaEnova) { UseShellExecute = true };
                 startedProcess = Process.Start(processInfo);
-                log("Uruchomiono nową instancję Enova365.");
+                log("Uruchomiono nową instancję Enova365.");  
                 AktywnySleep(6000, token, pauseEvent);
 
                 using (var automation = new UIA3Automation())
@@ -166,10 +153,7 @@ namespace Automatyczne_Klawisze
 
                     app = FlaUI.Core.Application.Attach(startedProcess);
 
-                    // ==========================================
-                    // BEZPIECZNE POBIERANIE OKNA I KROK 1 (SZUKANIE BAZY)
-                    // ==========================================
-                    log("Szukam pola wyboru bazy (i stabilizuję okno główne)...");
+                    log("Szukam pola wyboru bazy (i stabilizuję okno główne)...");  
                     Window mainWindow = null;
                     FlaUI.Core.AutomationElements.TextBox poleWyszukiwania = null;
 
@@ -234,7 +218,7 @@ namespace Automatyczne_Klawisze
                         AktywnySleep(500, token, pauseEvent);
 
                         poleWyszukiwania.Text = szukanaFraza;
-                        log($"Filtruję listę dla: {szukanaFraza}");
+                        log($"Filtruję listę dla: {szukanaFraza}");  
                         AktywnySleep(1500, token, pauseEvent);
 
                         var localMainWindow2 = mainWindow;
@@ -251,7 +235,7 @@ namespace Automatyczne_Klawisze
 
                         if (elementBazy != null)
                         {
-                            log($"Zlokalizowano bazę. Wykonuję kliknięcie...");
+                            log($"Zlokalizowano bazę. Wykonuję kliknięcie...");  
                             try
                             {
                                 elementBazy.Click();
@@ -260,7 +244,6 @@ namespace Automatyczne_Klawisze
                             }
                             catch { }
 
-                            // --- OBSŁUGA OKNA AKTUALIZACJI DODATKÓW ---
                             AktywnySleep(3000, token, pauseEvent);
                             Window oknoAktualizacji = null;
                             var localMainWindow3 = mainWindow;
@@ -276,7 +259,7 @@ namespace Automatyczne_Klawisze
 
                             if (oknoAktualizacji != null)
                             {
-                                log("Wykryto okno aktualizacji! Klikam 'Tak'...");
+                                log("Wykryto okno aktualizacji! Klikam 'Tak'...");  
 
                                 DateTime czasKlikniecia = DateTime.Now.AddSeconds(-2);
 
@@ -284,7 +267,7 @@ namespace Automatyczne_Klawisze
                                 if (btnTak != null) btnTak.Click();
                                 else { oknoAktualizacji.Focus(); Keyboard.Press(VirtualKeyShort.ENTER); }
 
-                                log("Czekam na całkowity reset Enovy (do 30 sekund)...");
+                                log("Czekam na całkowity reset Enovy (do 30 sekund)...");  
                                 int staryPid = startedProcess.Id;
                                 string nazwaProcesu = System.IO.Path.GetFileNameWithoutExtension(sciezkaEnova);
 
@@ -308,32 +291,19 @@ namespace Automatyczne_Klawisze
                                     {
                                         try
                                         {
-                                            if (nowyProces.StartTime >= czasKlikniecia)
-                                            {
-                                                break;
-                                            }
-                                            else
-                                            {
-                                                nowyProces = null;
-                                            }
+                                            if (nowyProces.StartTime >= czasKlikniecia) break;
+                                            else nowyProces = null;
                                         }
-                                        catch
-                                        {
-                                            break;
-                                        }
+                                        catch { break; }
                                     }
                                 }
 
                                 if (nowyProces != null)
                                 {
                                     startedProcess = nowyProces;
-
-                                    try { startedProcess.WaitForInputIdle(15000); }
-                                    catch (Exception exIdle) { log($"(info) WaitForInputIdle: {exIdle.Message}"); }
-
+                                    try { startedProcess.WaitForInputIdle(15000); } catch { }
                                     app = FlaUI.Core.Application.Attach(startedProcess);
-                                    log($"Ponownie podpięto się pod zaktualizowany proces Enovy (PID: {startedProcess.Id}).");
-
+                                    log($"Ponownie podpięto się pod zaktualizowany proces Enovy (PID: {startedProcess.Id}).");  
                                     mainWindow = null;
                                 }
                                 else
@@ -356,16 +326,17 @@ namespace Automatyczne_Klawisze
                     }
 
                     // ==========================================
-                    // KROK 2: LOGOWANIE
+                    // KROK 2: WYKRYWANIE OKNA LOGOWANIA
                     // ==========================================
-                    log("Oczekuję na okno logowania...");
+                    log("Oczekuję na okno logowania...");  
                     Window oknoLogowania = null;
 
-                    for (int i = 0; i < 20; i++)
+                    for (int i = 0; i < 25; i++)
                     {
                         pauseEvent.Wait(token);
                         var localApp2 = app;
                         var topWindows = UiaSafeCall(() => localApp2.GetAllTopLevelWindows(automation), UiaPollTimeout, Array.Empty<Window>());
+
                         oknoLogowania = topWindows.FirstOrDefault(w => {
                             try { return w.Name != null && w.Name.Contains("Logowanie do bazy"); }
                             catch { return false; }
@@ -408,11 +379,9 @@ namespace Automatyczne_Klawisze
                         if (btnOk != null) btnOk.Click();
                         else Keyboard.Press(VirtualKeyShort.ENTER);
 
-                        log("Zatwierdzono logowanie. Czekam na załadowanie bazy po aktualizacji...");
-
+                        log("Zatwierdzono logowanie. Czekam na załadowanie bazy...");  
                         AktywnySleep(3000, token, pauseEvent);
 
-                        // === NOWE ZMIENNE DO OBSŁUGI BŁĘDÓW ===
                         bool zlyLogin = false;
                         bool wymagaKonwersji = false;
                         bool nowszaWersja = false;
@@ -428,6 +397,7 @@ namespace Automatyczne_Klawisze
 
                             var localApp3 = app;
                             var topWindows = UiaSafeCall(() => localApp3.GetAllTopLevelWindows(automation), UiaPollTimeout, Array.Empty<Window>());
+
                             konwersjaWindow = topWindows.FirstOrDefault(w => {
                                 try { return w.Name != null && w.Name.Contains("Konwersja bazy"); } catch { return false; }
                             });
@@ -439,6 +409,7 @@ namespace Automatyczne_Klawisze
                             {
                                 var localOknoLogowania = oknoLogowania;
                                 var modaleLog = UiaSafeCall(() => localOknoLogowania.ModalWindows, UiaPollTimeout, Array.Empty<Window>());
+
                                 konwersjaWindow = modaleLog.FirstOrDefault(m => {
                                     try { return m.Name != null && m.Name.Contains("Konwersja bazy"); } catch { return false; }
                                 });
@@ -446,12 +417,11 @@ namespace Automatyczne_Klawisze
                                     try { return m.Name != null && (m.Name.Contains("Stop") || m.Name.Contains("Błąd")); } catch { return false; }
                                 });
 
-                                if (errorWindow == null && konwersjaWindow == null && i % 5 == 0)
+                                if (errorWindow == null && konwersjaWindow == null)
                                 {
                                     foreach (var m in modaleLog)
                                     {
-                                        var localM = m;
-                                        var raport = UiaSafeCall(() => localM.FindFirstDescendant(cf => cf.ByName("Raport błędu")), UiaPollTimeout);
+                                        var raport = UiaSafeCall(() => m.FindFirstDescendant(cf => cf.ByName("Raport błędu")), UiaPollTimeout);
                                         if (raport != null) { errorWindow = m; break; }
                                     }
                                 }
@@ -486,7 +456,6 @@ namespace Automatyczne_Klawisze
 
                             if (errorWindow != null)
                             {
-                                // === ODCZYT TEKSTU Z OKNA BŁĘDU ===
                                 string errorText = "";
                                 try
                                 {
@@ -498,16 +467,11 @@ namespace Automatyczne_Klawisze
                                 }
                                 catch { }
 
-                                // Sprawdzamy czy powodem odrzucenia jest nowsza wersja bazy
                                 if (errorText.Contains("z nowszej wersji"))
                                 {
                                     nowszaWersja = true;
-                                    // Szukamy dowolnego ciągu znaków w nawiasach składającego się z cyfr i kropek
                                     var match = Regex.Match(errorText, @"\(([\d\.]+)\)");
-                                    if (match.Success)
-                                    {
-                                        wersjaNowszejBazy = match.Groups[1].Value;
-                                    }
+                                    if (match.Success) wersjaNowszejBazy = match.Groups[1].Value;
                                 }
                                 else
                                 {
@@ -529,99 +493,19 @@ namespace Automatyczne_Klawisze
                             AktywnySleep(300, token, pauseEvent);
                         }
 
-                        if (!wymagaKonwersji && !zlyLogin && !nowszaWersja && !sukcesPotwierdzony)
+                        try
                         {
-                            log("⚠ Brak jednoznacznego potwierdzenia zalogowania - wykonuję dokładniejszą kontrolę końcową...");
-
-                            var localApp3b = app;
-                            var topWindowsFinal = UiaSafeCall(() => localApp3b.GetAllTopLevelWindows(automation), UiaCallTimeout, Array.Empty<Window>());
-                            var errorFinal = topWindowsFinal.FirstOrDefault(w => {
-                                try { return w.Name != null && (w.Name.Contains("Stop") || w.Name.Contains("Błąd")); } catch { return false; }
-                            });
-
-                            if (errorFinal == null)
-                            {
-                                var localOknoLogowaniaB = oknoLogowania;
-                                var modaleLogB = UiaSafeCall(() => localOknoLogowaniaB.ModalWindows, UiaCallTimeout, Array.Empty<Window>());
-                                errorFinal = modaleLogB.FirstOrDefault(m => {
-                                    try { return m.Name != null && (m.Name.Contains("Stop") || m.Name.Contains("Błąd")); } catch { return false; }
-                                });
-                            }
-
-                            if (errorFinal != null)
-                            {
-                                // === ODCZYT TEKSTU Z OKNA BŁĘDU (KONTROLA KOŃCOWA) ===
-                                string errorText = "";
-                                try
-                                {
-                                    var textElements = errorFinal.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text));
-                                    foreach (var te in textElements)
-                                    {
-                                        if (!string.IsNullOrWhiteSpace(te.Name)) errorText += te.Name + " ";
-                                    }
-                                }
-                                catch { }
-
-                                if (errorText.Contains("z nowszej wersji"))
-                                {
-                                    nowszaWersja = true;
-                                    var match = Regex.Match(errorText, @"\(([\d\.]+)\)");
-                                    if (match.Success) wersjaNowszejBazy = match.Groups[1].Value;
-                                }
-                                else
-                                {
-                                    zlyLogin = true;
-                                }
-
-                                try
-                                {
-                                    var btnOkErrorFinal = errorFinal.FindFirstDescendant(cf => cf.ByName("OK"))?.AsButton();
-                                    if (btnOkErrorFinal != null) btnOkErrorFinal.Click();
-                                    else { errorFinal.Focus(); Keyboard.Press(VirtualKeyShort.ENTER); }
-                                }
-                                catch { }
-                                AktywnySleep(1000, token, pauseEvent);
-                            }
-                            else
-                            {
-                                bool logowanieIstniejeFinal = topWindowsFinal.Any(w => {
-                                    try { return w.Name != null && w.Name.Contains("Logowanie do bazy"); } catch { return false; }
-                                });
-                                if (!logowanieIstniejeFinal)
-                                {
-                                    sukcesPotwierdzony = true;
-                                }
-                            }
+                            var btnAnulujLogowanie = oknoLogowania.FindFirstDescendant(cf => cf.ByName("Anuluj"))?.AsButton();
+                            btnAnulujLogowanie?.Click();
                         }
+                        catch { }
 
-                        // === OBSŁUGA REZULTATÓW LOGOWANIA ===
-                        if (wymagaKonwersji)
-                        {
-                            powodBledu = "Baza wymaga konwersji (zbyt stara wersja).";
-                            return false;
-                        }
+                        if (wymagaKonwersji) { powodBledu = "Baza wymaga konwersji (zbyt stara wersja)."; return false; }
+                        if (nowszaWersja) { powodBledu = string.IsNullOrEmpty(wersjaNowszejBazy) ? "Baza pochodzi z nowszej wersji programu." : $"Baza pochodzi z nowszej wersji programu ({wersjaNowszejBazy})."; return false; }
+                        if (zlyLogin) { powodBledu = "Odrzucono logowanie (Błędne hasło lub zablokowane konto)."; return false; }
+                        if (!sukcesPotwierdzony) { powodBledu = "Nie udało się jednoznacznie potwierdzić poprawnego zalogowania w wyznaczonym czasie."; return false; }
 
-                        if (nowszaWersja)
-                        {
-                            powodBledu = string.IsNullOrEmpty(wersjaNowszejBazy)
-                                ? "Baza pochodzi z nowszej wersji programu."
-                                : $"Baza pochodzi z nowszej wersji programu ({wersjaNowszejBazy}).";
-                            return false;
-                        }
-
-                        if (zlyLogin)
-                        {
-                            powodBledu = "Odrzucono logowanie (Błędne hasło lub zablokowane konto).";
-                            return false;
-                        }
-
-                        if (!sukcesPotwierdzony)
-                        {
-                            powodBledu = "Nie udało się jednoznacznie potwierdzić poprawnego zalogowania w wyznaczonym czasie (możliwy niewykryty błąd logowania lub bardzo wolne ładowanie bazy).";
-                            return false;
-                        }
-
-                        log("Logowanie poprawne. Przechodzę do weryfikacji licencji...");
+                        log("Logowanie poprawne. Przechodzę do weryfikacji licencji...");  
                     }
                     else
                     {
@@ -632,7 +516,7 @@ namespace Automatyczne_Klawisze
                     // ==========================================
                     // KROK 3: LICENCJE
                     // ==========================================
-                    log("Czekam na ewentualne okno licencji (szukam przycisków)...");
+                    log("Czekam na ewentualne okno licencji...");
                     Window oknoLicencji = null;
                     AutomationElement btnOdznacz = null;
                     AutomationElement btnZapisz = null;
@@ -640,7 +524,6 @@ namespace Automatyczne_Klawisze
                     for (int j = 0; j < 15; j++)
                     {
                         pauseEvent.Wait(token);
-
                         var localApp4 = app;
                         var wszystkieOkna = UiaSafeCall(() => localApp4.GetAllTopLevelWindows(automation), UiaPollTimeout, Array.Empty<Window>());
 
@@ -648,7 +531,6 @@ namespace Automatyczne_Klawisze
                         {
                             var localWnd = wnd;
                             btnZapisz = UiaSafeCall(() => localWnd.FindFirstDescendant(cf => cf.ByName("Zapisz i zamknij")), UiaPollTimeout);
-
                             if (btnZapisz != null)
                             {
                                 oknoLicencji = wnd;
@@ -656,9 +538,7 @@ namespace Automatyczne_Klawisze
                                 break;
                             }
                         }
-
                         if (btnZapisz != null) break;
-
                         AktywnySleep(500, token, pauseEvent);
                     }
 
@@ -677,19 +557,12 @@ namespace Automatyczne_Klawisze
                                     var invPattern = btnOdznacz.Patterns.Invoke.PatternOrDefault;
                                     if (invPattern != null) invPattern.Invoke();
                                     else btnOdznacz.Click();
-
-                                    log("Kliknięto 'Odznacz niedostępne licencje'.");
                                     AktywnySleep(1000, token, pauseEvent);
-                                }
-                                else
-                                {
-                                    log("(info) Przycisk 'Odznacz niedostępne licencje' jest zablokowany - pomijam.");
                                 }
                             }
                             catch { }
                         }
 
-                        log("Klikam 'Zapisz i zamknij'...");
                         try
                         {
                             var invPattern = btnZapisz.Patterns.Invoke.PatternOrDefault;
@@ -700,34 +573,22 @@ namespace Automatyczne_Klawisze
 
                         AktywnySleep(3500, token, pauseEvent);
                     }
-                    else
-                    {
-                        log("Nie wykryto licencji w wyznaczonym czasie. Zakładam, że baza załadowała się bezpośrednio.");
-                    }
-
-                    log("Pobieram główne okno po zalogowaniu...");
-                    mainWindow = null;
-                    for (int i = 0; i < 15; i++)
-                    {
-                        var localApp5 = app;
-                        var okna = UiaSafeCall(() => localApp5.GetAllTopLevelWindows(automation), UiaCallTimeout, Array.Empty<Window>());
-                        mainWindow = okna.FirstOrDefault(w => {
-                            try { return w.Name != null && w.Name.Contains("enova365"); } catch { return false; }
-                        }) ?? okna.FirstOrDefault();
-                        if (mainWindow != null) break;
-                        AktywnySleep(500, token, pauseEvent);
-                    }
-
-                    if (mainWindow == null)
-                    {
-                        powodBledu = "Nie udało się pobrać okna bazy po logowaniu.";
-                        return false;
-                    }
 
                     // ==========================================
                     // KROK 4: IMPORT XML
                     // ==========================================
-                    log("Otwieram import XML...");
+                    log("Pobieram główne okno i otwieram import XML...");
+                    mainWindow = null;
+                    for (int i = 0; i < 15; i++)
+                    {
+                        var okna = UiaSafeCall(() => app.GetAllTopLevelWindows(automation), UiaCallTimeout, Array.Empty<Window>());
+                        mainWindow = okna.FirstOrDefault(w => { try { return w.Name != null && w.Name.Contains("enova365"); } catch { return false; } }) ?? okna.FirstOrDefault();
+                        if (mainWindow != null) break;
+                        AktywnySleep(500, token, pauseEvent);
+                    }
+
+                    if (mainWindow == null) { powodBledu = "Nie udało się pobrać okna bazy po logowaniu."; return false; }
+
                     mainWindow.Focus();
                     AktywnySleep(500, token, pauseEvent);
 
@@ -742,47 +603,14 @@ namespace Automatyczne_Klawisze
                     for (int i = 0; i < 20; i++)
                     {
                         pauseEvent.Wait(token);
-
-                        var localMainWindow4 = mainWindow;
-                        var modaleOtw = UiaSafeCall(() => localMainWindow4.ModalWindows, UiaCallTimeout, Array.Empty<Window>());
-                        oknoOtwierania = modaleOtw.FirstOrDefault(m => {
-                            try { return m.Name != null && (m.Name.Contains("Otwieranie") || m.Name.Contains("Open")); } catch { return false; }
-                        });
-
-                        Window oknoBleduUprawnien = modaleOtw.FirstOrDefault(m => {
-                            try { return m.Name != null && (m.Name.Contains("Stop") || m.Name.Contains("Błąd")); } catch { return false; }
-                        });
-
-                        Window[] topWindows = Array.Empty<Window>();
-                        if (oknoOtwierania == null || oknoBleduUprawnien == null)
-                        {
-                            var localApp6 = app;
-                            topWindows = UiaSafeCall(() => localApp6.GetAllTopLevelWindows(automation), UiaCallTimeout, Array.Empty<Window>());
-
-                            if (oknoOtwierania == null)
-                                oknoOtwierania = topWindows.FirstOrDefault(m => {
-                                    try { return m.Name != null && (m.Name.Contains("Otwieranie") || m.Name.Contains("Open")); } catch { return false; }
-                                });
-
-                            if (oknoBleduUprawnien == null)
-                                oknoBleduUprawnien = topWindows.FirstOrDefault(w => {
-                                    try { return w.Name != null && (w.Name.Contains("Stop") || w.Name.Contains("Błąd")); } catch { return false; }
-                                });
-                        }
+                        var modaleOtw = UiaSafeCall(() => mainWindow.ModalWindows, UiaCallTimeout, Array.Empty<Window>());
+                        oknoOtwierania = modaleOtw.FirstOrDefault(m => { try { return m.Name != null && (m.Name.Contains("Otwieranie") || m.Name.Contains("Open")); } catch { return false; } });
+                        var oknoBleduUprawnien = modaleOtw.FirstOrDefault(m => { try { return m.Name != null && (m.Name.Contains("Stop") || m.Name.Contains("Błąd")); } catch { return false; } });
 
                         if (oknoBleduUprawnien != null)
                         {
-                            log("❌ Wykryto brak uprawnień przy próbie importu XML.");
-                            try
-                            {
-                                var btnOkUprawnienia = oknoBleduUprawnien.FindFirstDescendant(cf => cf.ByName("OK"))?.AsButton();
-                                if (btnOkUprawnienia != null) btnOkUprawnienia.Click();
-                                else { oknoBleduUprawnien.Focus(); Keyboard.Press(VirtualKeyShort.ENTER); }
-                            }
-                            catch { }
-                            AktywnySleep(1000, token, pauseEvent);
-
-                            powodBledu = "Brak uprawnień do importu XML (konto operatora ma inny system praw).";
+                            try { oknoBleduUprawnien.FindFirstDescendant(cf => cf.ByName("OK"))?.AsButton()?.Click(); } catch { }
+                            powodBledu = "Brak uprawnień do importu XML.";
                             return false;
                         }
 
@@ -799,58 +627,39 @@ namespace Automatyczne_Klawisze
                         Keyboard.Press(VirtualKeyShort.ENTER);
 
                         Window oknoInformacji = null;
+                        Window oknoBleduUprawnienPoWskazaniu = null;
                         for (int i = 0; i < 20; i++)
                         {
                             pauseEvent.Wait(token);
+                            var modaleInfo = UiaSafeCall(() => mainWindow.ModalWindows, UiaCallTimeout, Array.Empty<Window>());
 
-                            var localMainWindow5 = mainWindow;
-                            var modaleInfo = UiaSafeCall(() => localMainWindow5.ModalWindows, UiaCallTimeout, Array.Empty<Window>());
-                            oknoInformacji = modaleInfo.FirstOrDefault(m => {
-                                try { return m.Name != null && (m.Name.Contains("Informacja - enova365") || m.Name.Contains("Informacja")); } catch { return false; }
-                            });
-                            Window oknoBleduUprawnien2 = modaleInfo.FirstOrDefault(m => {
-                                try { return m.Name != null && (m.Name.Contains("Stop") || m.Name.Contains("Błąd")); } catch { return false; }
-                            });
+                            oknoInformacji = modaleInfo.FirstOrDefault(m => { try { return m.Name != null && m.Name.Contains("Informacja"); } catch { return false; } });
+                            oknoBleduUprawnienPoWskazaniu = modaleInfo.FirstOrDefault(m => { try { return m.Name != null && (m.Name.Contains("Stop") || m.Name.Contains("Błąd")); } catch { return false; } });
 
-                            if (oknoInformacji == null || oknoBleduUprawnien2 == null)
-                            {
-                                var localApp7 = app;
-                                var topWindows = UiaSafeCall(() => localApp7.GetAllTopLevelWindows(automation), UiaCallTimeout, Array.Empty<Window>());
-                                if (oknoInformacji == null)
-                                    oknoInformacji = topWindows.FirstOrDefault(m => {
-                                        try { return m.Name != null && (m.Name.Contains("Informacja - enova365") || m.Name.Contains("Informacja")); } catch { return false; }
-                                    });
-                                if (oknoBleduUprawnien2 == null)
-                                    oknoBleduUprawnien2 = topWindows.FirstOrDefault(w => {
-                                        try { return w.Name != null && (w.Name.Contains("Stop") || w.Name.Contains("Błąd")); } catch { return false; }
-                                    });
-                            }
-
-                            if (oknoBleduUprawnien2 != null)
-                            {
-                                log("❌ Wykryto brak uprawnień po wskazaniu pliku XML do importu.");
-                                try
-                                {
-                                    var btnOkUprawnienia2 = oknoBleduUprawnien2.FindFirstDescendant(cf => cf.ByName("OK"))?.AsButton();
-                                    if (btnOkUprawnienia2 != null) btnOkUprawnienia2.Click();
-                                    else { oknoBleduUprawnien2.Focus(); Keyboard.Press(VirtualKeyShort.ENTER); }
-                                }
-                                catch { }
-                                AktywnySleep(1000, token, pauseEvent);
-
-                                powodBledu = "Brak uprawnień do importu XML (konto operatora ma inny system praw).";
-                                return false;
-                            }
-
-                            if (oknoInformacji != null) break;
+                            if (oknoInformacji != null || oknoBleduUprawnienPoWskazaniu != null) break;
                             AktywnySleep(500, token, pauseEvent);
+                        }
+
+                        // Obsługa błędu uprawnień po wskazaniu pliku XML ("Uprawnienie przeznaczone dla innego systemu praw")
+                        if (oknoBleduUprawnienPoWskazaniu != null)
+                        {
+                            log("❌ Wykryto błąd uprawnień przy imporcie XML - przerywam dla tej bazy.");
+                            try
+                            {
+                                var btnOk = oknoBleduUprawnienPoWskazaniu.FindFirstDescendant(cf => cf.ByName("OK"))?.AsButton();
+                                if (btnOk != null) btnOk.Click();
+                                else { oknoBleduUprawnienPoWskazaniu.Focus(); Keyboard.Press(VirtualKeyShort.ENTER); }
+                            }
+                            catch { }
+                            AktywnySleep(1000, token, pauseEvent);
+
+                            powodBledu = "Uprawnienie przeznaczone dla innego systemu praw.";
+                            return false;
                         }
 
                         if (oknoInformacji != null)
                         {
-                            var btnOkInfo = oknoInformacji.FindFirstDescendant(cf => cf.ByName("OK"))?.AsButton();
-                            if (btnOkInfo != null) btnOkInfo.Click();
-                            else { oknoInformacji.Focus(); Keyboard.Press(VirtualKeyShort.ENTER); }
+                            try { oknoInformacji.FindFirstDescendant(cf => cf.ByName("OK"))?.AsButton()?.Click(); } catch { }
                         }
                     }
 
@@ -860,6 +669,7 @@ namespace Automatyczne_Klawisze
                     AktywnySleep(2000, token, pauseEvent);
                     log("Wyszukuję operatora na liście...");
 
+                    mainWindow.Focus();
                     using (Keyboard.Pressing(VirtualKeyShort.CONTROL)) { Keyboard.Press(VirtualKeyShort.F9); }
                     AktywnySleep(1500, token, pauseEvent);
                     using (Keyboard.Pressing(VirtualKeyShort.CONTROL)) { Keyboard.Press(VirtualKeyShort.KEY_O); }
@@ -869,28 +679,47 @@ namespace Automatyczne_Klawisze
                     for (int i = 0; i < 5; i++)
                     {
                         pauseEvent.Wait(token);
+                        var wszystkieElementy = UiaSafeCall(() => mainWindow.FindAllDescendants(), UiaCallTimeout, Array.Empty<AutomationElement>());
 
-                        var localMainWindow6 = mainWindow;
-                        var wszystkieElementy = UiaSafeCall(() => localMainWindow6.FindAllDescendants(), UiaCallTimeout, Array.Empty<AutomationElement>());
                         foreach (var el in wszystkieElementy)
                         {
                             try
                             {
                                 string nazwaElementu = el.Name;
+                                // Sprawdzamy czy element zawiera tekst operatora lub pasuje w komórce siatki
                                 if (!string.IsNullOrWhiteSpace(nazwaElementu))
                                 {
-                                    if (nazwaElementu.Trim().Equals(nowyOperator.Trim(), StringComparison.OrdinalIgnoreCase)) { wpisOperatora = el; break; }
-                                    if (el.ControlType == FlaUI.Core.Definitions.ControlType.DataItem && nazwaElementu.Contains(nowyOperator)) { wpisOperatora = el; break; }
+                                    if (nazwaElementu.Trim().Equals(nowyOperator.Trim(), StringComparison.OrdinalIgnoreCase) ||
+                                        nazwaElementu.Contains(nowyOperator))
+                                    {
+                                        wpisOperatora = el;
+                                        break;
+                                    }
                                 }
+
+                                // Sprawdzenie wartości wzorców tekstowych
                                 if (el.Patterns.Value.IsSupported)
                                 {
                                     string wartosc = el.Patterns.Value.Pattern.Value.Value;
-                                    if (!string.IsNullOrWhiteSpace(wartosc) && wartosc.Trim().Equals(nowyOperator.Trim(), StringComparison.OrdinalIgnoreCase)) { wpisOperatora = el; break; }
+                                    if (!string.IsNullOrWhiteSpace(wartosc) && wartosc.Contains(nowyOperator))
+                                    {
+                                        wpisOperatora = el;
+                                        break;
+                                    }
                                 }
                             }
                             catch { }
                         }
+
                         if (wpisOperatora != null) break;
+
+                        // Jeśli po pierwszej iteracji nie znalazło przez UI Automation, spróbujmy wpisać go z klawiatury (filtr listy)
+                        if (i == 1)
+                        {
+                            Keyboard.Type(nowyOperator);
+                            AktywnySleep(1000, token, pauseEvent);
+                        }
+
                         AktywnySleep(1000, token, pauseEvent);
                     }
 
@@ -898,109 +727,66 @@ namespace Automatyczne_Klawisze
                     {
                         wpisOperatora.Click();
                         AktywnySleep(1000, token, pauseEvent);
-
-                        var localMainWindow7 = mainWindow;
-                        var btnUstawHaslo = UiaSafeCall(() => localMainWindow7.FindFirstDescendant(cf => cf.ByName("Ustaw hasło..."))?.AsButton(), UiaCallTimeout)
-                                            ?? UiaSafeCall(() => localMainWindow7.FindFirstDescendant(cf => cf.ByName("Ustaw hasło"))?.AsButton(), UiaCallTimeout);
-
-                        if (btnUstawHaslo != null)
-                        {
-                            btnUstawHaslo.Click();
-                            Window oknoUstawiania = null;
-
-                            for (int k = 0; k < 20; k++)
-                            {
-                                pauseEvent.Wait(token);
-
-                                var localApp8 = app;
-                                var wszystkieOkna = UiaSafeCall(() => localApp8.GetAllTopLevelWindows(automation), UiaCallTimeout, Array.Empty<Window>());
-                                foreach (var w in wszystkieOkna)
-                                {
-                                    if (!string.IsNullOrEmpty(w.Name) && (w.Name.IndexOf("hasł", StringComparison.OrdinalIgnoreCase) >= 0 || w.Name.IndexOf("Ustawien", StringComparison.OrdinalIgnoreCase) >= 0))
-                                    { oknoUstawiania = w; break; }
-
-                                    var localW = w;
-                                    var btnBrak = UiaSafeCall(() => localW.FindFirstDescendant(cf => cf.ByName("Brak"))?.AsButton(), UiaCallTimeout);
-                                    if (btnBrak != null) { oknoUstawiania = w; break; }
-                                }
-
-                                if (oknoUstawiania == null)
-                                {
-                                    var localMainWindow8 = mainWindow;
-                                    var modaleUst = UiaSafeCall(() => localMainWindow8.ModalWindows, UiaCallTimeout, Array.Empty<Window>());
-                                    foreach (var m in modaleUst)
-                                    {
-                                        if (!string.IsNullOrEmpty(m.Name) && (m.Name.IndexOf("hasł", StringComparison.OrdinalIgnoreCase) >= 0))
-                                        { oknoUstawiania = m; break; }
-                                    }
-                                }
-
-                                if (oknoUstawiania != null) break;
-                                AktywnySleep(500, token, pauseEvent);
-                            }
-
-                            if (oknoUstawiania != null)
-                            {
-                                oknoUstawiania.Focus();
-                                AktywnySleep(1000, token, pauseEvent);
-
-                                var pierwszePole = oknoUstawiania.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Edit));
-                                if (pierwszePole != null)
-                                {
-                                    pierwszePole.Click();
-                                    AktywnySleep(300, token, pauseEvent);
-                                }
-
-                                Keyboard.Type(hasloOperatora);
-                                AktywnySleep(400, token, pauseEvent);
-                                Keyboard.Press(VirtualKeyShort.TAB);
-                                AktywnySleep(400, token, pauseEvent);
-                                Keyboard.Type(hasloOperatora);
-                                AktywnySleep(400, token, pauseEvent);
-
-                                var btnOkHaslo = oknoUstawiania.FindFirstDescendant(cf => cf.ByName("OK"))?.AsButton();
-                                if (btnOkHaslo != null) { btnOkHaslo.Click(); }
-                                else { Keyboard.Press(VirtualKeyShort.ENTER); }
-
-                                AktywnySleep(2500, token, pauseEvent);
-
-                                var localMainWindow9 = mainWindow;
-                                var btnZapiszKoncowe = UiaSafeCall(() => localMainWindow9.FindFirstDescendant(cf => cf.ByName("Zapisz i zamknij"))?.AsButton(), UiaCallTimeout);
-                                if (btnZapiszKoncowe != null)
-                                {
-                                    btnZapiszKoncowe.Click();
-                                    AktywnySleep(2000, token, pauseEvent);
-                                    return true;
-                                }
-                                else
-                                {
-                                    powodBledu = "Nie znaleziono przycisku 'Zapisz i zamknij' na koniec.";
-                                    return false;
-                                }
-                            }
-                            else
-                            {
-                                powodBledu = "Okno wpisywania hasła nie pojawiło się.";
-                                return false;
-                            }
-                        }
-                        else
-                        {
-                            powodBledu = "Brak przycisku 'Ustaw hasło...' na pasku operatorów.";
-                            return false;
-                        }
                     }
                     else
                     {
-                        powodBledu = "Operator nie pojawił się na liście (błąd importu XML lub złe ID).";
-                        return false;
+                        // Awaryjnie: jeśli nie kliknęło elementu, strzałka w dół (bo domyślnie podświetlony jest Administrator, więc Test jest po jednym wciśnięciu strzałki w dół)
+                        Keyboard.Press(VirtualKeyShort.DOWN);
+                        AktywnySleep(500, token, pauseEvent);
                     }
+
+                    // Przechodzimy do przycisku ustawiania hasła bez względu na dokładny klik elementu (skoro jest na liście)
+                    var btnUstawHaslo = UiaSafeCall(() => mainWindow.FindFirstDescendant(cf => cf.ByName("Ustaw hasło..."))?.AsButton(), UiaCallTimeout)
+                                        ?? UiaSafeCall(() => mainWindow.FindFirstDescendant(cf => cf.ByName("Ustaw hasło"))?.AsButton(), UiaCallTimeout);
+
+                    if (btnUstawHaslo != null)
+                    {
+                        btnUstawHaslo.Click();
+                        Window oknoUstawiania = null;
+
+                        for (int k = 0; k < 20; k++)
+                        {
+                            pauseEvent.Wait(token);
+                            var modaleUst = UiaSafeCall(() => mainWindow.ModalWindows, UiaCallTimeout, Array.Empty<Window>());
+                            oknoUstawiania = modaleUst.FirstOrDefault(m => m.Name != null && m.Name.IndexOf("hasł", StringComparison.OrdinalIgnoreCase) >= 0);
+                            if (oknoUstawiania != null) break;
+                            AktywnySleep(500, token, pauseEvent);
+                        }
+
+                        if (oknoUstawiania != null)
+                        {
+                            oknoUstawiania.Focus();
+                            AktywnySleep(1000, token, pauseEvent);
+
+                            var pierwszePole = oknoUstawiania.FindFirstDescendant(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Edit));
+                            pierwszePole?.Click();
+                            AktywnySleep(300, token, pauseEvent);
+
+                            Keyboard.Type(hasloOperatora);
+                            AktywnySleep(400, token, pauseEvent);
+                            Keyboard.Press(VirtualKeyShort.TAB);
+                            AktywnySleep(400, token, pauseEvent);
+                            Keyboard.Type(hasloOperatora);
+                            AktywnySleep(400, token, pauseEvent);
+
+                            oknoUstawiania.FindFirstDescendant(cf => cf.ByName("OK"))?.AsButton()?.Click();
+                            AktywnySleep(2500, token, pauseEvent);
+
+                            var btnZapiszKoncowe = UiaSafeCall(() => mainWindow.FindFirstDescendant(cf => cf.ByName("Zapisz i zamknij"))?.AsButton(), UiaCallTimeout);
+                            if (btnZapiszKoncowe != null)
+                            {
+                                btnZapiszKoncowe.Click();
+                                AktywnySleep(2000, token, pauseEvent);
+                                return true;
+                            }
+                        }
+                    }
+
+                    powodBledu = "Nie udało się otworzyć okna zmiany hasła dla operatora.";
+                    return false;
                 }
             }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
+            catch (OperationCanceledException) { throw; }
             catch (Exception ex)
             {
                 powodBledu = $"Nieoczekiwany błąd systemu: {ex.Message}";

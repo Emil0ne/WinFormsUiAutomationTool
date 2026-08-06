@@ -25,8 +25,14 @@ namespace Automatyczne_Klawisze
             // --- NAKŁADANIE CZYSTEGO, CIEMNEGO MOTYWU ---
             ZastosujCiemnyMotyw();
 
-
-
+            // ==========================================
+            // DOMYŚLNE WARTOŚCI POL FORMULARZA
+            // ==========================================
+            txtSciezkaEnova.Text = @"C:\Program Files (x86)\Soneta\enova365 2512.9.11\SonetaExplorer.exe";
+            txtEnovaUser.Text = "Administrator";
+            txtNowyOperator.Text = "Test";
+            txtNoweHaslo.Text = "test";
+            txtSciezkaXml.Text = @"C:\Users\Administrator.OFFICE\Desktop\OPERATORZY.xml";
         }
 
         private void ZastosujCiemnyMotyw()
@@ -218,12 +224,10 @@ namespace Automatyczne_Klawisze
             _pauseEvent = new ManualResetEventSlim(true); // true = stan odblokowany (brak pauzy)
             _isPaused = false;
 
-            // Jeśli kontrolka nazywa się inaczej, zmień tutaj "btnPauza" na swoją nazwę, np. "button2"
             btnPauza.Text = "Pauza";
 
             Task.Run(() =>
             {
-                // Przekazujemy _cts.Token oraz _pauseEvent do naszej głównej metody
                 EnovaOperatorzy.Uruchom(bazyDoPrzetworzenia, login, haslo, nowyOp, hasloOp, sciezkaXml, sciezkaEnova, _cts.Token, _pauseEvent, (wiadomosc) =>
                 {
                     Invoke(new Action(() => rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] {wiadomosc}\n")));
@@ -308,11 +312,9 @@ namespace Automatyczne_Klawisze
         {
             if (_cts != null && !_cts.IsCancellationRequested)
             {
-                _cts.Cancel(); // Wysyłamy sygnał przerwania (wyłapie go nasz 'AktywnySleep' i token)
+                _cts.Cancel(); // Wysyłamy sygnał przerwania
                 rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] 🛑 WYSŁANO SYGNAŁ PRZERWANIA PROCESU...\n");
 
-                // Jeśli program spał w trybie pauzy, musimy go natychmiast "odmrozić", 
-                // żeby pętla mogła wyłapać token anulowania i zakończyć proces
                 if (_isPaused)
                 {
                     _pauseEvent.Set();
