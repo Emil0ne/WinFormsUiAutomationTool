@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
 using System.IO;
+using System.Text.RegularExpressions;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using FlaUI.UIA3;
@@ -148,7 +149,11 @@ namespace Automatyczne_Klawisze
                     var znalezioneElementy = UiaSafeCall(() => localMainWindow2.FindAllDescendants(cf => cf.ByName(nazwaBazy)), UiaCallTimeout, Array.Empty<AutomationElement>());
                     AutomationElement elementBazy = znalezioneElementy.FirstOrDefault(e => e.ControlType == FlaUI.Core.Definitions.ControlType.Text) ?? znalezioneElementy.FirstOrDefault();
 
-                    if (elementBazy != null) { log("Zlokalizowano bazę. Klikam..."); try { elementBazy.Click(); AktywnySleep(200, token, pauseEvent); elementBazy.DoubleClick(); } catch { } }
+                    if (elementBazy != null)
+                    {
+                        log("Zlokalizowano bazę. Klikam...");
+                        try { elementBazy.Click(); AktywnySleep(200, token, pauseEvent); elementBazy.DoubleClick(); } catch { }
+                    }
                     else { powodBledu = "Nie znaleziono bazy."; return false; }
 
                     AktywnySleep(3000, token, pauseEvent);
@@ -186,10 +191,12 @@ namespace Automatyczne_Klawisze
                         else { powodBledu = "Enova nie wstała po aktualizacji dodatków."; return false; }
                     }
 
-                    // LOGOWANIE I KONWERSJA
+                    // ==========================================
+                    // KROK 2: LOGOWANIE
+                    // ==========================================
                     log("Oczekuję na okno logowania...");
                     Window oknoLogowania = null;
-                    for (int i = 0; i < 20; i++)
+                    for (int i = 0; i < 25; i++)
                     {
                         pauseEvent.Wait(token);
                         var localApp2 = app;
@@ -197,7 +204,12 @@ namespace Automatyczne_Klawisze
                         oknoLogowania = topWindows.FirstOrDefault(w => { try { return w.Name != null && w.Name.Contains("Logowanie do bazy"); } catch { return false; } });
                         if (oknoLogowania == null)
                         {
-                            foreach (var wnd in topWindows) { var modale = UiaSafeCall(() => wnd.ModalWindows, UiaPollTimeout, Array.Empty<Window>()); var znalezione = modale.FirstOrDefault(m => { try { return m.Name != null && m.Name.Contains("Logowanie do bazy"); } catch { return false; } }); if (znalezione != null) { oknoLogowania = znalezione; break; } }
+                            foreach (var wnd in topWindows)
+                            {
+                                var modale = UiaSafeCall(() => wnd.ModalWindows, UiaPollTimeout, Array.Empty<Window>());
+                                var znalezione = modale.FirstOrDefault(m => { try { return m.Name != null && m.Name.Contains("Logowanie do bazy"); } catch { return false; } });
+                                if (znalezione != null) { oknoLogowania = znalezione; break; }
+                            }
                         }
                         if (oknoLogowania != null) break;
                         AktywnySleep(300, token, pauseEvent);
@@ -213,39 +225,93 @@ namespace Automatyczne_Klawisze
                         var btnOk = oknoLogowania.FindFirstDescendant(cf => cf.ByName("OK"))?.AsButton();
                         if (btnOk != null) btnOk.Click(); else Keyboard.Press(VirtualKeyShort.ENTER);
 
-                        log("Zatwierdzono logowanie. Sprawdzam czy wymaga konwersji...");
+                        log("Zatwierdzono logowanie. Sprawdzam stan bazy...");
                         AktywnySleep(3000, token, pauseEvent);
 
                         bool zlyLogin = false;
+                        bool nowszaWersja = false;
+                        string wersjaNowszejBazy = "";
                         Window konwersjaWindow = null;
 
-                        for (int i = 0; i < 20; i++)
+                        for (int i = 0; i < 40; i++)
                         {
                             pauseEvent.Wait(token);
+                            Window errorWindow = null;
                             var localApp3 = app;
                             var topWindows = UiaSafeCall(() => localApp3.GetAllTopLevelWindows(automation), UiaPollTimeout, Array.Empty<Window>());
-                            konwersjaWindow = topWindows.FirstOrDefault(w => { try { return w.Name != null && w.Name.Contains("Konwersja bazy"); } catch { return false; } });
-                            var errorWindow = topWindows.FirstOrDefault(w => { try { return w.Name != null && (w.Name.Contains("Stop") || w.Name.Contains("Błąd")); } catch { return false; } });
 
-                            if (konwersjaWindow == null && errorWindow == null)
+                            // Sprawdzamy czy od razu wyskoczył ekran licencji (znaczy, że baza jest na odpowiedniej wersji i ruszyła!)
+                            bool odrazuLicencje = topWindows.Any(w => { try { return w.Name != null && w.Name.Contains("Pobrane licencje"); } catch { return false; } });
+                            if (odrazuLicencje)
+                            {
+                                log("Wykryto okno 'Pobrane licencje'. Baza jest już w aktualnej wersji!");
+                                break;
+                            }
+
+                            konwersjaWindow = topWindows.FirstOrDefault(w => { try { return w.Name != null && w.Name.Contains("Konwersja bazy"); } catch { return false; } });
+                            errorWindow = topWindows.FirstOrDefault(w => { try { return w.Name != null && (w.Name.Contains("Stop") || w.Name.Contains("Błąd")); } catch { return false; } });
+
+                            if (errorWindow == null && konwersjaWindow == null)
                             {
                                 var modaleLog = UiaSafeCall(() => oknoLogowania.ModalWindows, UiaPollTimeout, Array.Empty<Window>());
+                                if (modaleLog.Any(m => { try { return m.Name != null && m.Name.Contains("Pobrane licencje"); } catch { return false; } })) break;
+
                                 konwersjaWindow = modaleLog.FirstOrDefault(m => { try { return m.Name != null && m.Name.Contains("Konwersja bazy"); } catch { return false; } });
                                 errorWindow = modaleLog.FirstOrDefault(m => { try { return m.Name != null && (m.Name.Contains("Stop") || m.Name.Contains("Błąd")); } catch { return false; } });
                             }
 
-                            if (errorWindow != null) { zlyLogin = true; break; }
-                            if (konwersjaWindow != null) break;
+                            if (konwersjaWindow != null || odrazuLicencje) break;
+
+                            if (errorWindow != null)
+                            {
+                                string errorText = "";
+                                try
+                                {
+                                    var textElements = errorWindow.FindAllDescendants(cf => cf.ByControlType(FlaUI.Core.Definitions.ControlType.Text));
+                                    foreach (var te in textElements) { if (!string.IsNullOrWhiteSpace(te.Name)) errorText += te.Name + " "; }
+                                }
+                                catch { }
+
+                                if (errorText.Contains("z nowszej wersji"))
+                                {
+                                    nowszaWersja = true;
+                                    var match = Regex.Match(errorText, @"\(([\d\.]+)\)");
+                                    if (match.Success) wersjaNowszejBazy = match.Groups[1].Value;
+                                }
+                                else
+                                {
+                                    zlyLogin = true;
+                                }
+
+                                try
+                                {
+                                    var btnOkError = errorWindow.FindFirstDescendant(cf => cf.ByName("OK"))?.AsButton();
+                                    if (btnOkError != null) btnOkError.Click(); else { errorWindow.Focus(); Keyboard.Press(VirtualKeyShort.ENTER); }
+                                }
+                                catch { }
+                                AktywnySleep(1000, token, pauseEvent);
+                                break;
+                            }
 
                             bool logowanieIstnieje = topWindows.Any(w => { try { return w.Name != null && w.Name.Contains("Logowanie do bazy"); } catch { return false; } });
-                            if (!logowanieIstnieje) break; // Logowanie przeszło i brak okna konwersji
+                            if (!logowanieIstnieje) break;
 
                             AktywnySleep(300, token, pauseEvent);
                         }
 
-                        if (zlyLogin) { powodBledu = "Odrzucono logowanie."; return false; }
+                        try
+                        {
+                            var btnAnulujLogowanie = oknoLogowania.FindFirstDescendant(cf => cf.ByName("Anuluj"))?.AsButton();
+                            btnAnulujLogowanie?.Click();
+                        }
+                        catch { }
 
-                        // WŁAŚCIWA LOGIKA KONWERSJI
+                        if (nowszaWersja) { powodBledu = string.IsNullOrEmpty(wersjaNowszejBazy) ? "Baza pochodzi z nowszej wersji programu." : $"Baza pochodzi z nowszej wersji programu ({wersjaNowszejBazy})."; return false; }
+                        if (zlyLogin) { powodBledu = "Odrzucono logowanie (Błędne hasło lub zablokowane konto)."; return false; }
+
+                        // ==========================================
+                        // KROK 3: JEŚLI JEST OKNO KONWERSJI -> KONwertUJEMY
+                        // ==========================================
                         if (konwersjaWindow != null)
                         {
                             log("Wykryto okno 'Konwersja bazy'. Sprawdzam checkboxy...");
@@ -297,12 +363,10 @@ namespace Automatyczne_Klawisze
                                         powodBledu = "Proces Enovy niespodziewanie się zakończył.";
                                         break;
                                     }
-                                    if (czasKonwersjiMs % 60000 == 0) log($"(info) Enova nie odpowiada (mieli dane). Konwersja trwa... ({czasKonwersjiMs / 60000} min)");
                                     continue;
                                 }
 
-                                // 1. TWARDY WARUNEK SUKCESU (Pojawiły się licencje lub informacja po zalogowaniu)
-                                bool licencjeWisi = aktualneOkna.Any(w => { try { return w.Name != null && (w.Name.Contains("Pobrane licencje") || w.Name.Contains("Informacja")); } catch { return false; } });
+                                bool licencjeWisi = aktualneOkna.Any(w => { try { return w.Name != null && (w.Name.Contains("Pobrane licencje") || w.Name.Contains("Informacja") || w.Name.Contains("Zapisz i zamknij")); } catch { return false; } });
                                 if (licencjeWisi)
                                 {
                                     log("Wykryto okno licencji/informacji. Konwersja zakończona!");
@@ -310,7 +374,6 @@ namespace Automatyczne_Klawisze
                                     break;
                                 }
 
-                                // 2. TWARDY WARUNEK BŁĘDU
                                 bool bladWisi = aktualneOkna.Any(w => { try { return w.Name != null && (w.Name.Contains("Stop") || w.Name.Contains("Błąd") || w.Name.Contains("Raport błędu")); } catch { return false; } });
                                 if (bladWisi)
                                 {
@@ -319,78 +382,26 @@ namespace Automatyczne_Klawisze
                                     break;
                                 }
 
-                                // 3. SPRAWDZANIE CZY DALEJ MIELI
-                                bool logowanieWisi = aktualneOkna.Any(w => { try { return w.Name != null && w.Name.Contains("Logowanie do bazy"); } catch { return false; } });
-                                bool proszeCzekacWisi = aktualneOkna.Any(w => { try { return w.Name != null && w.Name.Contains("Proszę czekać"); } catch { return false; } });
-                                bool konwersjaWisi = aktualneOkna.Any(w => { try { return w.Name != null && w.Name.Contains("Konwersja bazy"); } catch { return false; } });
-
-                                if (logowanieWisi && !konwersjaWisi && !proszeCzekacWisi && !bladWisi)
-                                {
-                                    var oknoLogowaniaAktualne = aktualneOkna.FirstOrDefault(w => w.Name != null && w.Name.Contains("Logowanie do bazy"));
-                                    if (oknoLogowaniaAktualne != null)
-                                    {
-                                        var modale = UiaSafeCall(() => oknoLogowaniaAktualne.ModalWindows, UiaPollTimeout, Array.Empty<Window>());
-                                        konwersjaWisi = modale.Any(m => { try { return m.Name != null && m.Name.Contains("Konwersja bazy"); } catch { return false; } });
-                                        proszeCzekacWisi = modale.Any(m => { try { return m.Name != null && m.Name.Contains("Proszę czekać"); } catch { return false; } });
-                                        bladWisi = modale.Any(m => { try { return m.Name != null && (m.Name.Contains("Stop") || m.Name.Contains("Błąd")); } catch { return false; } });
-
-                                        if (!konwersjaWisi && !proszeCzekacWisi)
-                                        {
-                                            var tekstKonwersji = UiaSafeCall(() => oknoLogowaniaAktualne.FindFirstDescendant(cf => cf.ByName("Konwersja bazy")), TimeSpan.FromSeconds(1));
-                                            if (tekstKonwersji != null) konwersjaWisi = true;
-                                        }
-                                    }
-                                }
-
-                                // 4. KONTROLA KOŃCOWA (Zniknęły okna logowania)
-                                if (!logowanieWisi && !konwersjaWisi && !proszeCzekacWisi)
-                                {
-                                    AktywnySleep(2000, token, pauseEvent); // Czekamy na ustabilizowanie
-                                    var weryfikacjaOkien = UiaSafeCall(() => app.GetAllTopLevelWindows(automation), UiaPollTimeout, Array.Empty<Window>());
-
-                                    bool werLicencje = weryfikacjaOkien.Any(w => w.Name != null && (w.Name.Contains("Pobrane licencje") || w.Name.Contains("Informacja")));
-                                    if (werLicencje)
-                                    {
-                                        log("Wykryto okno licencji/informacji. Konwersja zakończona!");
-                                        konwersjaZakonczona = true;
-                                        break;
-                                    }
-
-                                    bool werLogowanie = weryfikacjaOkien.Any(w => w.Name != null && w.Name.Contains("Logowanie do bazy"));
-                                    bool werCzekac = weryfikacjaOkien.Any(w => w.Name != null && w.Name.Contains("Proszę czekać"));
-
-                                    if (!werLogowanie && !werCzekac)
-                                    {
-                                        konwersjaZakonczona = true;
-                                        break;
-                                    }
-                                }
-
                                 if (czasKonwersjiMs % 60000 == 0) { log($"(info) Konwersja w toku... ({czasKonwersjiMs / 60000} min)"); }
                             }
 
-                            if (!konwersjaZakonczona && string.IsNullOrEmpty(powodBledu))
+                            if (!konwersjaZakonczona)
                             {
-                                powodBledu = "Przekroczono czas oczekiwania na konwersję (10 minut).";
+                                if (string.IsNullOrEmpty(powodBledu)) powodBledu = "Przekroczono czas oczekiwania na konwersję.";
                                 return false;
                             }
-                            else if (!konwersjaZakonczona)
-                            {
-                                return false;
-                            }
-
-                            log("Zakończono proces konwersji w tle.");
-                            AktywnySleep(2000, token, pauseEvent);
                         }
                         else
                         {
-                            log("Baza nie wymaga konwersji (jest już w najnowszej wersji).");
+                            log("Baza jest już w docelowej wersji (pomijam konwersję).");
                         }
                     }
                     else { powodBledu = "Brak okna logowania."; return false; }
 
-                    // OBSŁUGA POWIADOMIEŃ / LICENCJI PO KONWERSJI
-                    log("Sprawdzam powiadomienia po starcie (Licencje / Wygasła Sesja)...");
+                    // ==========================================
+                    // KROK 4: OBSŁUGA OKNA LICENCJI I ZAMKNIĘCIE BAZY
+                    // ==========================================
+                    log("Sprawdzam okno licencji / powiadomień po starcie...");
                     for (int j = 0; j < 15; j++)
                     {
                         pauseEvent.Wait(token);
@@ -400,7 +411,7 @@ namespace Automatyczne_Klawisze
                         var oknoInfo = wszystkieOknaPo.FirstOrDefault(w => { try { return w.Name != null && (w.Name.Contains("Informacja") || w.Name.Contains("Wygasła sesja")); } catch { return false; } });
                         if (oknoInfo != null)
                         {
-                            log("Wykryto okno informacji (możliwa wygasła sesja). Klikam OK...");
+                            log("Wykryto okno informacji. Klikam OK...");
                             var btnOkInfo = UiaSafeCall(() => oknoInfo.FindFirstDescendant(cf => cf.ByName("OK"))?.AsButton(), UiaCallTimeout);
                             if (btnOkInfo != null) btnOkInfo.Click(); else { oknoInfo.Focus(); Keyboard.Press(VirtualKeyShort.ENTER); }
                             AktywnySleep(2000, token, pauseEvent);
@@ -424,11 +435,11 @@ namespace Automatyczne_Klawisze
 
                         if (oknoLicencji != null && btnZapisz != null)
                         {
-                            log("Znaleziono ekran licencji. Próbuję odznaczyć i zapisać...");
+                            log("Znaleziono ekran licencji. Klikam 'Zapisz i zamknij'...");
                             oknoLicencji.Focus(); AktywnySleep(500, token, pauseEvent);
                             if (btnOdznacz != null) { try { if (btnOdznacz.IsEnabled) { var ip = btnOdznacz.Patterns.Invoke.PatternOrDefault; if (ip != null) ip.Invoke(); else btnOdznacz.Click(); } } catch { } }
                             try { var ip = btnZapisz.Patterns.Invoke.PatternOrDefault; if (ip != null) ip.Invoke(); else btnZapisz.Click(); } catch { }
-                            AktywnySleep(3500, token, pauseEvent);
+                            AktywnySleep(2500, token, pauseEvent);
                             break;
                         }
 
