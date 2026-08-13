@@ -347,7 +347,6 @@ namespace Automatyczne_Klawisze
                         return false;
                     }
 
-                    // Pobieramy okno Opcje
                     Window oknoOpcji = SzukajOknaOpcje(app, automation);
                     var oknoRobocze = oknoOpcji ?? mainWindow;
 
@@ -355,7 +354,7 @@ namespace Automatyczne_Klawisze
                     string sprawdzonyStan = OdczytajObecnySystemPraw(oknoRobocze, token, pauseEvent);
                     if (sprawdzonyStan.Equals("Rozszerzony", StringComparison.OrdinalIgnoreCase))
                     {
-                        log("ℹ️ Baza posiada już system ROZSZERZONY. Pomijam Dalsze akcje.");
+                        log("ℹ️ Baza posiada już system ROZSZERZONY. Pomijam dalsze akcje.");
                         wynik = "Pomięto (Baza miała już system rozszerzony)";
 
                         try { (oknoOpcji ?? mainWindow).Focus(); Keyboard.Press(VirtualKeyShort.ESCAPE); AktywnySleep(800, token, pauseEvent); } catch { }
@@ -497,7 +496,11 @@ namespace Automatyczne_Klawisze
         {
             var okna = PobierzWszystkieOkna(app, automation);
             return okna.FirstOrDefault(w => {
-                try { return w.Name != null && w.Name.Equals("Opcje", StringComparison.OrdinalIgnoreCase); }
+                try
+                {
+                    return (w.AutomationId != null && w.AutomationId.Equals("DataForm", StringComparison.OrdinalIgnoreCase))
+                        || (w.Name != null && w.Name.Contains("Opcje"));
+                }
                 catch { return false; }
             });
         }
@@ -646,51 +649,109 @@ namespace Automatyczne_Klawisze
             log("Zatwierdzam zapisywanie opcji (Zapisz i zamknij)...");
 
             Window oknoOpcji = SzukajOknaOpcje(app, automation);
-            var targetWnd = oknoOpcji ?? mainWindow;
 
-            var btnZapisz = UiaSafeCall(() => targetWnd.FindFirstDescendant(cf => cf.ByName("Zapisz i zamknij"))?.AsButton(), UiaCallTimeout);
+            AutomationElement btnZapisz = null;
+            var okna = PobierzWszystkieOkna(app, automation);
+            foreach (var wnd in okna)
+            {
+                btnZapisz = UiaSafeCall(() => wnd.FindFirstDescendant(cf => cf.ByName("Zapisz i zamknij")), UiaPollTimeout);
+                if (btnZapisz != null) break;
+            }
+
+            // POPRAWIONE: Jednokrotne wywołanie (unikamy podwójnego kliknięcia wywołującego błąd Splash Form)
+            bool kliknieto = false;
             if (btnZapisz != null)
             {
-                btnZapisz.Click();
-            }
-            else
-            {
-                targetWnd.Focus();
-                using (Keyboard.Pressing(VirtualKeyShort.ALT)) { Keyboard.Press(VirtualKeyShort.KEY_Z); }
-            }
-
-            log("Czekam na przetworzenie transakcji i całkowite zamknięcie okna Opcji...");
-            int maxCzekaniaSec = 60;
-            int odczekanoSec = 0;
-
-            while (odczekanoSec < maxCzekaniaSec)
-            {
-                token.ThrowIfCancellationRequested();
-                pauseEvent.Wait(token);
-                AktywnySleep(1000, token, pauseEvent);
-                odczekanoSec++;
-
-                Window opcjeNadalWisi = SzukajOknaOpcje(app, automation);
-                if (opcjeNadalWisi == null)
+                log(" -> Znaleziono przycisk 'Zapisz i zamknij'. Klikam...");
+                try
                 {
-                    log("Okno Opcje zostało pomyślnie zamknięte i zapisane.");
-                    break;
+                    var inv = btnZapisz.Patterns.Invoke.PatternOrDefault;
+                    if (inv != null)
+                    {
+                        inv.Invoke();
+                        kliknieto = true;
+                    }
                 }
+                catch { }
 
-                // Jeżeli po 5 sekundach okno nadal wisi, próbuje dobić je skrótem Alt + Z
-                if (odczekanoSec % 5 == 0)
+                if (!kliknieto)
                 {
-                    log(" -> Okno Opcje nadal otwarte, ponawiam sygnał Zapisz i zamknij (Alt + Z)...");
                     try
                     {
-                        opcjeNadalWisi.Focus();
-                        using (Keyboard.Pressing(VirtualKeyShort.ALT)) { Keyboard.Press(VirtualKeyShort.KEY_Z); }
+                        btnZapisz.AsButton().Click();
+                        kliknieto = true;
                     }
                     catch { }
                 }
             }
 
-            AktywnySleep(2000, token, pauseEvent);
+            if (!kliknieto)
+            {
+                log(" -> Wysyłam skrót Alt + Z...");
+                if (oknoOpcji != null) oknoOpcji.Focus();
+                else mainWindow.Focus();
+                AktywnySleep(300, token, pauseEvent);
+                using (Keyboard.Pressing(VirtualKeyShort.ALT)) { Keyboard.Press(VirtualKeyShort.KEY_Z); }
+            }
+
+            log("Czekam na przetworzenie transakcji i całkowite zamknięcie okna Opcji (DataForm)...");
+            int brakOknaLicznik = 0;
+            int maxCzekaniaSec = 60;
+
+            for (int odczekanoSec = 0; odczekanoSec < maxCzekaniaSec; odczekanoSec++)
+            {
+                token.ThrowIfCancellationRequested();
+                pauseEvent.Wait(token);
+                AktywnySleep(1000, token, pauseEvent);
+
+                // Sprawdzamy czy wyskoczył popup informacyjny/Stop (np. "Splash Form...")
+                var oknaObecne = PobierzWszystkieOkna(app, automation);
+                var oknoStop = oknaObecne.FirstOrDefault(w => w.Name != null && (w.Name.Contains("Stop") || w.Name.Contains("Błąd")));
+                if (oknoStop != null)
+                {
+                    log(" -> Zauważono komunikat ostrzegawczy/błędu. Zamykam go klikając OK...");
+                    try
+                    {
+                        var btnOk = oknoStop.FindFirstDescendant(cf => cf.ByName("OK"))?.AsButton();
+                        if (btnOk != null) btnOk.Click();
+                        else { oknoStop.Focus(); Keyboard.Press(VirtualKeyShort.ENTER); }
+                    }
+                    catch { }
+                    AktywnySleep(1000, token, pauseEvent);
+                }
+
+                Window opcjeNadalWisi = SzukajOknaOpcje(app, automation);
+                if (opcjeNadalWisi == null)
+                {
+                    brakOknaLicznik++;
+                    if (brakOknaLicznik >= 2)
+                    {
+                        log("Okno Opcje zostało pomyślnie zamknięte i zapisane.");
+                        return;
+                    }
+                }
+                else
+                {
+                    brakOknaLicznik = 0;
+
+                    // Ponawiamy próbę tylko jeśli minęło więcej czasu (co 6 sekund)
+                    if (odczekanoSec > 0 && odczekanoSec % 6 == 0)
+                    {
+                        log(" -> Okno Opcje nadal otwarte, ponawiam sygnał Zapisz i zamknij...");
+                        try
+                        {
+                            var btn = UiaSafeCall(() => opcjeNadalWisi.FindFirstDescendant(cf => cf.ByName("Zapisz i zamknij"))?.AsButton(), UiaPollTimeout);
+                            if (btn != null) btn.Click();
+                            else
+                            {
+                                opcjeNadalWisi.Focus();
+                                using (Keyboard.Pressing(VirtualKeyShort.ALT)) { Keyboard.Press(VirtualKeyShort.KEY_Z); }
+                            }
+                        }
+                        catch { }
+                    }
+                }
+            }
         }
 
         private static void CzekajNaZmianeNaRozszerzony(Window window, CancellationToken token, ManualResetEventSlim pauseEvent, Action<string> log)
