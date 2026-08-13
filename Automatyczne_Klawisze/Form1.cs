@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -22,17 +23,21 @@ namespace Automatyczne_Klawisze
             InitializeComponent();
             tabControl1.DrawMode = TabDrawMode.OwnerDrawFixed;
             tabControl1.DrawItem += tabControl1_DrawItem;
+
             // --- NAKŁADANIE CZYSTEGO, CIEMNEGO MOTYWU ---
             ZastosujCiemnyMotyw();
 
             // ==========================================
-            // DOMYŚLNE WARTOŚCI POL FORMULARZA
+            // DOMYŚLNE WARTOŚCI PÓL FORMULARZA
             // ==========================================
             txtSciezkaEnova.Text = @"C:\Program Files (x86)\Soneta\enova365 2512.9.11\SonetaExplorer.exe";
             txtEnovaUser.Text = "Administrator";
             txtNowyOperator.Text = "Test";
             txtNoweHaslo.Text = "test";
             txtSciezkaXml.Text = @"C:\Users\Administrator.OFFICE\Desktop\OPERATORZY.xml";
+
+            // Domyślnie zaznaczamy pierwszą opcję dla bezpieczeństwa
+            rbUzgodnijRole.Checked = true;
         }
 
         private void ZastosujCiemnyMotyw()
@@ -62,12 +67,12 @@ namespace Automatyczne_Klawisze
                 ((Button)ctrl).FlatStyle = FlatStyle.Flat; // Spłaszcza obramowanie
                 ((Button)ctrl).FlatAppearance.BorderColor = Color.FromArgb(80, 80, 80);
             }
-            else if (ctrl is Label)
+            else if (ctrl is Label || ctrl is RadioButton || ctrl is GroupBox)
             {
                 ctrl.ForeColor = Color.FromArgb(240, 240, 240);
                 ctrl.BackColor = Color.Transparent;
             }
-            else if (ctrl is TabPage) // <--- DODANY WARUNEK DLA ZAKŁADEK
+            else if (ctrl is TabPage)
             {
                 ctrl.BackColor = Color.FromArgb(32, 32, 32);
                 ctrl.ForeColor = Color.FromArgb(240, 240, 240);
@@ -91,11 +96,11 @@ namespace Automatyczne_Klawisze
             // Tło zakładki w zależności od tego, czy jest aktywna
             if (e.State == DrawItemState.Selected)
             {
-                g.FillRectangle(new SolidBrush(Color.FromArgb(45, 45, 48)), e.Bounds); // Jaśniejsza dla aktywnej
+                g.FillRectangle(new SolidBrush(Color.FromArgb(45, 45, 48)), e.Bounds);
             }
             else
             {
-                g.FillRectangle(new SolidBrush(Color.FromArgb(32, 32, 32)), e.Bounds); // Ciemniejsza dla nieaktywnej
+                g.FillRectangle(new SolidBrush(Color.FromArgb(32, 32, 32)), e.Bounds);
             }
 
             // Centrowanie i rysowanie tekstu
@@ -121,7 +126,7 @@ namespace Automatyczne_Klawisze
                 {
                     try
                     {
-                        clbBazy.Items.Clear(); // Czyścimy starą listę
+                        clbBazy.Items.Clear();
                         string wybranaSciezka = openFileDialog.FileName;
 
                         List<string> bazy = EnovaConfigReader.PobierzBazyZXml(wybranaSciezka);
@@ -147,15 +152,9 @@ namespace Automatyczne_Klawisze
             }
         }
 
-        private void label2_Click(object sender, EventArgs e)
-        {
+        private void label2_Click(object sender, EventArgs e) { }
 
-        }
-
-        private void label5_Click(object sender, EventArgs e)
-        {
-
-        }
+        private void label5_Click(object sender, EventArgs e) { }
 
         private void btnWybierzXml_Click(object sender, EventArgs e)
         {
@@ -167,7 +166,6 @@ namespace Automatyczne_Klawisze
                 if (openFileDialog.ShowDialog() == DialogResult.OK)
                 {
                     txtSciezkaXml.Text = openFileDialog.FileName;
-
                     rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] Wybrano plik do importu: {openFileDialog.FileName}\n");
                 }
             }
@@ -217,13 +215,9 @@ namespace Automatyczne_Klawisze
 
             rtbLogi.AppendText($"\n[{DateTime.Now:HH:mm:ss}] 🚀 START AUTOMATYZACJI! Bazy do przetworzenia: {bazyDoPrzetworzenia.Count}\n");
 
-            // ==========================================
-            // INICJALIZACJA KONTROLERÓW WĄTKU (STOP I PAUZA)
-            // ==========================================
             _cts = new CancellationTokenSource();
-            _pauseEvent = new ManualResetEventSlim(true); // true = stan odblokowany (brak pauzy)
+            _pauseEvent = new ManualResetEventSlim(true);
             _isPaused = false;
-
             btnPauza.Text = "Pauza";
 
             Task.Run(() =>
@@ -231,7 +225,6 @@ namespace Automatyczne_Klawisze
                 EnovaOperatorzy.Uruchom(bazyDoPrzetworzenia, login, haslo, nowyOp, hasloOp, sciezkaXml, sciezkaEnova, _cts.Token, _pauseEvent, (wiadomosc) =>
                 {
                     Invoke(new Action(() => rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] {wiadomosc}\n")));
-
                     Invoke(new Action(() =>
                     {
                         rtbLogi.SelectionStart = rtbLogi.Text.Length;
@@ -241,10 +234,7 @@ namespace Automatyczne_Klawisze
             });
         }
 
-        private void clbBazy_SelectedIndexChanged(object sender, EventArgs e)
-        {
-
-        }
+        private void clbBazy_SelectedIndexChanged(object sender, EventArgs e) { }
 
         private void btnZaznaczWszystko_Click(object sender, EventArgs e)
         {
@@ -277,42 +267,33 @@ namespace Automatyczne_Klawisze
             }
         }
 
-        private void rtbLogi_TextChanged(object sender, EventArgs e)
-        {
+        private void rtbLogi_TextChanged(object sender, EventArgs e) { }
 
-        }
-
-        // ==========================================
-        // OBSŁUGA PRZYCISKU PAUZY
-        // ==========================================
         private void btnPauza_Click(object sender, EventArgs e)
         {
             if (_pauseEvent == null) return;
 
             if (_isPaused)
             {
-                _pauseEvent.Set(); // Dajemy zielone światło (Odmrażamy)
+                _pauseEvent.Set();
                 _isPaused = false;
                 btnPauza.Text = "Pauza";
                 rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] ▶️ WZNOWIONO AUTOMATYZACJĘ.\n");
             }
             else
             {
-                _pauseEvent.Reset(); // Zapalamy czerwone światło (Zamrażamy)
+                _pauseEvent.Reset();
                 _isPaused = true;
                 btnPauza.Text = "Wznów";
                 rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] ⏸️ ZAPAUZOWANO. Kliknij Wznów, aby kontynuować.\n");
             }
         }
 
-        // ==========================================
-        // OBSŁUGA PRZYCISKU STOP
-        // ==========================================
         private void btnStop_Click(object sender, EventArgs e)
         {
             if (_cts != null && !_cts.IsCancellationRequested)
             {
-                _cts.Cancel(); // Wysyłamy sygnał przerwania
+                _cts.Cancel();
                 rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] 🛑 WYSŁANO SYGNAŁ PRZERWANIA PROCESU...\n");
 
                 if (_isPaused)
@@ -322,10 +303,7 @@ namespace Automatyczne_Klawisze
             }
         }
 
-        private void txtSciezkaXml_TextChanged(object sender, EventArgs e)
-        {
-
-        }
+        private void txtSciezkaXml_TextChanged(object sender, EventArgs e) { }
 
         private void btnWyczyscLogi_Click(object sender, EventArgs e)
         {
@@ -373,9 +351,6 @@ namespace Automatyczne_Klawisze
 
             rtbLogi.AppendText($"\n[{DateTime.Now:HH:mm:ss}] 🔄 START AKTUALIZACJI / KONWERSJI! Bazy do przetworzenia: {bazyDoPrzetworzenia.Count}\n");
 
-            // ==========================================
-            // INICJALIZACJA KONTROLERÓW WĄTKU
-            // ==========================================
             _cts = new CancellationTokenSource();
             _pauseEvent = new ManualResetEventSlim(true);
             _isPaused = false;
@@ -386,7 +361,6 @@ namespace Automatyczne_Klawisze
                 EnovaAktualizacja.Uruchom(bazyDoPrzetworzenia, login, haslo, sciezkaEnova, _cts.Token, _pauseEvent, (wiadomosc) =>
                 {
                     Invoke(new Action(() => rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] {wiadomosc}\n")));
-
                     Invoke(new Action(() =>
                     {
                         rtbLogi.SelectionStart = rtbLogi.Text.Length;
@@ -395,5 +369,121 @@ namespace Automatyczne_Klawisze
                 });
             });
         }
+
+        private void btnSprawdzSystemPraw_Click(object sender, EventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtSciezkaEnova.Text) || !File.Exists(txtSciezkaEnova.Text))
+            {
+                rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] BŁĄD: Nie wybrano prawidłowego pliku uruchomieniowego Enova (.exe)!\n");
+                return;
+            }
+
+            if (clbBazy.CheckedItems.Count == 0)
+            {
+                rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] BŁĄD: Musisz zaznaczyć przynajmniej jedną bazę na liście!\n");
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(txtEnovaUser.Text))
+            {
+                rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] BŁĄD: Wprowadź login do Enovy!\n");
+                return;
+            }
+
+            List<string> bazyDoPrzetworzenia = new List<string>();
+            foreach (var item in clbBazy.CheckedItems)
+            {
+                bazyDoPrzetworzenia.Add(item.ToString());
+            }
+
+            string login = txtEnovaUser.Text;
+            string haslo = txtEnovaPass.Text;
+            string sciezkaEnova = txtSciezkaEnova.Text;
+
+            rtbLogi.AppendText($"\n[{DateTime.Now:HH:mm:ss}] 🔍 START SPRAWDZANIA SYSTEMU PRAW! Bazy: {bazyDoPrzetworzenia.Count}\n");
+
+            _cts = new CancellationTokenSource();
+            _pauseEvent = new ManualResetEventSlim(true);
+            _isPaused = false;
+            btnPauza.Text = "Pauza";
+
+            Task.Run(() =>
+            {
+                EnovaSystemPraw.Uruchom(bazyDoPrzetworzenia, login, haslo, sciezkaEnova, _cts.Token, _pauseEvent, (wiadomosc) =>
+                {
+                    Invoke(new Action(() => rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] {wiadomosc}\n")));
+                    Invoke(new Action(() =>
+                    {
+                        rtbLogi.SelectionStart = rtbLogi.Text.Length;
+                        rtbLogi.ScrollToCaret();
+                    }));
+                });
+            });
+        }
+
+        private void btnKonwersjaPraw_Click(object sender, EventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txtSciezkaEnova.Text) || !File.Exists(txtSciezkaEnova.Text))
+            {
+                rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] BŁĄD: Nie wybrano prawidłowego pliku uruchomieniowego Enova (.exe)!\n");
+                return;
+            }
+
+            if (clbBazy.CheckedItems.Count == 0)
+            {
+                rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] BŁĄD: Musisz zaznaczyć przynajmniej jedną bazę na liście!\n");
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(txtEnovaUser.Text))
+            {
+                rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] BŁĄD: Wprowadź login do Enovy!\n");
+                return;
+            }
+
+            // Weryfikacja wyboru opcji RadioButton
+            if (!rbUzgodnijRole.Checked && !rbPelnaKonwersja.Checked)
+            {
+                rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] BŁĄD: Wybierz opcję konwersji ról!\n");
+                return;
+            }
+
+            bool tylkoUzgodnijRole = rbUzgodnijRole.Checked;
+
+            List<string> bazyDoPrzetworzenia = new List<string>();
+            foreach (var item in clbBazy.CheckedItems)
+            {
+                bazyDoPrzetworzenia.Add(item.ToString());
+            }
+
+            string login = txtEnovaUser.Text;
+            string haslo = txtEnovaPass.Text;
+            string sciezkaEnova = txtSciezkaEnova.Text;
+
+            string opcjaTxt = tylkoUzgodnijRole ? "TYLKO UZGODNIENIE RÓL" : "PEŁNA KONWERSJA (ROZSZERZONY)";
+            rtbLogi.AppendText($"\n[{DateTime.Now:HH:mm:ss}] 🔄 START KONWERSJI SYSTEMU PRAW [{opcjaTxt}]! Bazy: {bazyDoPrzetworzenia.Count}\n");
+
+            _cts = new CancellationTokenSource();
+            _pauseEvent = new ManualResetEventSlim(true);
+            _isPaused = false;
+            btnPauza.Text = "Pauza";
+
+            Task.Run(() =>
+            {
+                EnovaKonwersjaPraw.Uruchom(bazyDoPrzetworzenia, login, haslo, sciezkaEnova, tylkoUzgodnijRole, _cts.Token, _pauseEvent, (wiadomosc) =>
+                {
+                    Invoke(new Action(() => rtbLogi.AppendText($"[{DateTime.Now:HH:mm:ss}] {wiadomosc}\n")));
+                    Invoke(new Action(() =>
+                    {
+                        rtbLogi.SelectionStart = rtbLogi.Text.Length;
+                        rtbLogi.ScrollToCaret();
+                    }));
+                });
+            });
+        }
+
+        private void textBox1_TextChanged(object sender, EventArgs e) { }
+
+        private void rbPelnaKonwersja_CheckedChanged(object sender, EventArgs e) { }
+
+        private void rbUzgodnijRole_CheckedChanged(object sender, EventArgs e) { }
     }
 }

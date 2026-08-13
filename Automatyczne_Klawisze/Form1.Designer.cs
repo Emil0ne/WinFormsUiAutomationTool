@@ -56,9 +56,18 @@
             dodanieOperatora = new TabPage();
             zmianaWersji = new TabPage();
             btnAktualizuj = new Button();
+            systemPraw = new TabPage();
+            btnSprawdzSystemPraw = new Button();
+            konwersjaPraw = new TabPage();
+            textBox1 = new TextBox();
+            rbPelnaKonwersja = new RadioButton();
+            rbUzgodnijRole = new RadioButton();
+            btnKonwersjaPraw = new Button();
             tabControl1.SuspendLayout();
             dodanieOperatora.SuspendLayout();
             zmianaWersji.SuspendLayout();
+            systemPraw.SuspendLayout();
+            konwersjaPraw.SuspendLayout();
             SuspendLayout();
             // 
             // btnWczytajBazy
@@ -283,10 +292,12 @@
             // 
             tabControl1.Controls.Add(dodanieOperatora);
             tabControl1.Controls.Add(zmianaWersji);
+            tabControl1.Controls.Add(systemPraw);
+            tabControl1.Controls.Add(konwersjaPraw);
             tabControl1.Location = new Point(12, 312);
             tabControl1.Name = "tabControl1";
             tabControl1.SelectedIndex = 0;
-            tabControl1.Size = new Size(345, 207);
+            tabControl1.Size = new Size(373, 207);
             tabControl1.TabIndex = 24;
             // 
             // dodanieOperatora
@@ -302,7 +313,7 @@
             dodanieOperatora.Location = new Point(4, 24);
             dodanieOperatora.Name = "dodanieOperatora";
             dodanieOperatora.Padding = new Padding(3);
-            dodanieOperatora.Size = new Size(337, 179);
+            dodanieOperatora.Size = new Size(365, 179);
             dodanieOperatora.TabIndex = 0;
             dodanieOperatora.Text = "Dodanie operatora";
             dodanieOperatora.UseVisualStyleBackColor = true;
@@ -313,7 +324,7 @@
             zmianaWersji.Location = new Point(4, 24);
             zmianaWersji.Name = "zmianaWersji";
             zmianaWersji.Padding = new Padding(3);
-            zmianaWersji.Size = new Size(337, 179);
+            zmianaWersji.Size = new Size(365, 179);
             zmianaWersji.TabIndex = 1;
             zmianaWersji.Text = "Zmiana wersji";
             zmianaWersji.UseVisualStyleBackColor = true;
@@ -327,6 +338,82 @@
             btnAktualizuj.Text = "URUCHOM AKTUALIZACJĘ BAZ";
             btnAktualizuj.UseVisualStyleBackColor = true;
             btnAktualizuj.Click += btnAktualizuj_Click;
+            // 
+            // systemPraw
+            // 
+            systemPraw.Controls.Add(btnSprawdzSystemPraw);
+            systemPraw.Location = new Point(4, 24);
+            systemPraw.Name = "systemPraw";
+            systemPraw.Size = new Size(365, 179);
+            systemPraw.TabIndex = 2;
+            systemPraw.Text = "System praw";
+            systemPraw.UseVisualStyleBackColor = true;
+            // 
+            // btnSprawdzSystemPraw
+            // 
+            btnSprawdzSystemPraw.Location = new Point(52, 78);
+            btnSprawdzSystemPraw.Name = "btnSprawdzSystemPraw";
+            btnSprawdzSystemPraw.Size = new Size(232, 23);
+            btnSprawdzSystemPraw.TabIndex = 15;
+            btnSprawdzSystemPraw.Text = "SPRAWDŹ SYSTEM PRAW";
+            btnSprawdzSystemPraw.UseVisualStyleBackColor = true;
+            btnSprawdzSystemPraw.Click += btnSprawdzSystemPraw_Click;
+            // 
+            // konwersjaPraw
+            // 
+            konwersjaPraw.Controls.Add(textBox1);
+            konwersjaPraw.Controls.Add(rbPelnaKonwersja);
+            konwersjaPraw.Controls.Add(rbUzgodnijRole);
+            konwersjaPraw.Controls.Add(btnKonwersjaPraw);
+            konwersjaPraw.Location = new Point(4, 24);
+            konwersjaPraw.Name = "konwersjaPraw";
+            konwersjaPraw.Size = new Size(365, 179);
+            konwersjaPraw.TabIndex = 3;
+            konwersjaPraw.Text = "Konwersja praw";
+            konwersjaPraw.UseVisualStyleBackColor = true;
+            // 
+            // textBox1
+            // 
+            textBox1.Location = new Point(131, 12);
+            textBox1.Name = "textBox1";
+            textBox1.Size = new Size(100, 23);
+            textBox1.TabIndex = 19;
+            textBox1.Text = "Co chcesz zrobić?";
+            textBox1.TextChanged += textBox1_TextChanged;
+            // 
+            // rbPelnaKonwersja
+            // 
+            rbPelnaKonwersja.AutoSize = true;
+            rbPelnaKonwersja.Location = new Point(197, 41);
+            rbPelnaKonwersja.Name = "rbPelnaKonwersja";
+            rbPelnaKonwersja.Size = new Size(110, 19);
+            rbPelnaKonwersja.TabIndex = 18;
+            rbPelnaKonwersja.Text = "Pełna konwersja";
+            rbPelnaKonwersja.UseVisualStyleBackColor = true;
+            rbPelnaKonwersja.CheckedChanged += rbPelnaKonwersja_CheckedChanged;
+            // 
+            // rbUzgodnijRole
+            // 
+            rbUzgodnijRole.AutoSize = true;
+            rbUzgodnijRole.Checked = true;
+            rbUzgodnijRole.Location = new Point(59, 41);
+            rbUzgodnijRole.Name = "rbUzgodnijRole";
+            rbUzgodnijRole.Size = new Size(95, 19);
+            rbUzgodnijRole.TabIndex = 17;
+            rbUzgodnijRole.TabStop = true;
+            rbUzgodnijRole.Text = "Uzgodnij role";
+            rbUzgodnijRole.UseVisualStyleBackColor = true;
+            rbUzgodnijRole.CheckedChanged += rbUzgodnijRole_CheckedChanged;
+            // 
+            // btnKonwersjaPraw
+            // 
+            btnKonwersjaPraw.Location = new Point(59, 105);
+            btnKonwersjaPraw.Name = "btnKonwersjaPraw";
+            btnKonwersjaPraw.Size = new Size(232, 23);
+            btnKonwersjaPraw.TabIndex = 16;
+            btnKonwersjaPraw.Text = "ZMIEŃ SYSTEM PRAW";
+            btnKonwersjaPraw.UseVisualStyleBackColor = true;
+            btnKonwersjaPraw.Click += btnKonwersjaPraw_Click;
             // 
             // Form1
             // 
@@ -356,6 +443,9 @@
             dodanieOperatora.ResumeLayout(false);
             dodanieOperatora.PerformLayout();
             zmianaWersji.ResumeLayout(false);
+            systemPraw.ResumeLayout(false);
+            konwersjaPraw.ResumeLayout(false);
+            konwersjaPraw.PerformLayout();
             ResumeLayout(false);
             PerformLayout();
         }
@@ -390,5 +480,12 @@
         private TabPage dodanieOperatora;
         private TabPage zmianaWersji;
         private Button btnAktualizuj;
+        private TabPage systemPraw;
+        private Button btnSprawdzSystemPraw;
+        private TabPage konwersjaPraw;
+        private Button btnKonwersjaPraw;
+        private TextBox textBox1;
+        private RadioButton rbPelnaKonwersja;
+        private RadioButton rbUzgodnijRole;
     }
 }
