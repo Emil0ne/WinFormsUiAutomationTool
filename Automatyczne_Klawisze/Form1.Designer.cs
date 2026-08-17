@@ -59,10 +59,18 @@
             systemPraw = new TabPage();
             btnSprawdzSystemPraw = new Button();
             konwersjaPraw = new TabPage();
+            label9 = new Label();
+            txtSqlHaslo = new TextBox();
+            label7 = new Label();
+            txtSqlServer = new TextBox();
+            label8 = new Label();
+            txtSqlLogin = new TextBox();
             textBox1 = new TextBox();
             rbPelnaKonwersja = new RadioButton();
             rbUzgodnijRole = new RadioButton();
             btnKonwersjaPraw = new Button();
+            progressBar1 = new ProgressBar();
+            lblPostep = new Label();
             tabControl1.SuspendLayout();
             dodanieOperatora.SuspendLayout();
             zmianaWersji.SuspendLayout();
@@ -72,7 +80,7 @@
             // 
             // btnWczytajBazy
             // 
-            btnWczytajBazy.Location = new Point(12, 129);
+            btnWczytajBazy.Location = new Point(387, 8);
             btnWczytajBazy.Name = "btnWczytajBazy";
             btnWczytajBazy.Size = new Size(116, 23);
             btnWczytajBazy.TabIndex = 0;
@@ -83,9 +91,9 @@
             // clbBazy
             // 
             clbBazy.FormattingEnabled = true;
-            clbBazy.Location = new Point(12, 194);
+            clbBazy.Location = new Point(387, 73);
             clbBazy.Name = "clbBazy";
-            clbBazy.Size = new Size(238, 112);
+            clbBazy.Size = new Size(238, 436);
             clbBazy.TabIndex = 1;
             clbBazy.SelectedIndexChanged += clbBazy_SelectedIndexChanged;
             // 
@@ -102,7 +110,7 @@
             // 
             txtEnovaUser.Location = new Point(110, 71);
             txtEnovaUser.Name = "txtEnovaUser";
-            txtEnovaUser.Size = new Size(140, 23);
+            txtEnovaUser.Size = new Size(271, 23);
             txtEnovaUser.TabIndex = 3;
             // 
             // label2
@@ -119,14 +127,14 @@
             // 
             txtEnovaPass.Location = new Point(110, 100);
             txtEnovaPass.Name = "txtEnovaPass";
-            txtEnovaPass.Size = new Size(140, 23);
+            txtEnovaPass.Size = new Size(271, 23);
             txtEnovaPass.TabIndex = 5;
             // 
             // txtNoweHaslo
             // 
             txtNoweHaslo.Location = new Point(104, 39);
             txtNoweHaslo.Name = "txtNoweHaslo";
-            txtNoweHaslo.Size = new Size(140, 23);
+            txtNoweHaslo.Size = new Size(255, 23);
             txtNoweHaslo.TabIndex = 9;
             // 
             // label3
@@ -142,7 +150,7 @@
             // 
             txtNowyOperator.Location = new Point(104, 10);
             txtNowyOperator.Name = "txtNowyOperator";
-            txtNowyOperator.Size = new Size(140, 23);
+            txtNowyOperator.Size = new Size(255, 23);
             txtNowyOperator.TabIndex = 7;
             // 
             // label4
@@ -168,7 +176,7 @@
             // 
             txtSciezkaXml.Location = new Point(6, 97);
             txtSciezkaXml.Name = "txtSciezkaXml";
-            txtSciezkaXml.Size = new Size(238, 23);
+            txtSciezkaXml.Size = new Size(353, 23);
             txtSciezkaXml.TabIndex = 11;
             txtSciezkaXml.TextChanged += txtSciezkaXml_TextChanged;
             // 
@@ -176,7 +184,7 @@
             // 
             btnWybierzXml.Location = new Point(104, 68);
             btnWybierzXml.Name = "btnWybierzXml";
-            btnWybierzXml.Size = new Size(140, 23);
+            btnWybierzXml.Size = new Size(255, 23);
             btnWybierzXml.TabIndex = 12;
             btnWybierzXml.Text = "...";
             btnWybierzXml.UseVisualStyleBackColor = true;
@@ -184,7 +192,7 @@
             // 
             // btnStart
             // 
-            btnStart.Location = new Point(6, 126);
+            btnStart.Location = new Point(66, 143);
             btnStart.Name = "btnStart";
             btnStart.Size = new Size(232, 23);
             btnStart.TabIndex = 13;
@@ -194,17 +202,17 @@
             // 
             // rtbLogi
             // 
-            rtbLogi.Location = new Point(604, 13);
+            rtbLogi.Location = new Point(631, 8);
             rtbLogi.Name = "rtbLogi";
             rtbLogi.ReadOnly = true;
-            rtbLogi.Size = new Size(317, 422);
+            rtbLogi.Size = new Size(317, 501);
             rtbLogi.TabIndex = 14;
             rtbLogi.Text = "";
             rtbLogi.TextChanged += rtbLogi_TextChanged;
             // 
             // btnZaznaczWszystko
             // 
-            btnZaznaczWszystko.Location = new Point(12, 158);
+            btnZaznaczWszystko.Location = new Point(387, 37);
             btnZaznaczWszystko.Name = "btnZaznaczWszystko";
             btnZaznaczWszystko.Size = new Size(116, 23);
             btnZaznaczWszystko.TabIndex = 15;
@@ -214,7 +222,7 @@
             // 
             // btnOdznaczWszystko
             // 
-            btnOdznaczWszystko.Location = new Point(134, 158);
+            btnOdznaczWszystko.Location = new Point(509, 37);
             btnOdznaczWszystko.Name = "btnOdznaczWszystko";
             btnOdznaczWszystko.Size = new Size(116, 23);
             btnOdznaczWszystko.TabIndex = 16;
@@ -226,7 +234,7 @@
             // 
             btnWybierzEnova.Location = new Point(147, 10);
             btnWybierzEnova.Name = "btnWybierzEnova";
-            btnWybierzEnova.Size = new Size(103, 23);
+            btnWybierzEnova.Size = new Size(234, 23);
             btnWybierzEnova.TabIndex = 19;
             btnWybierzEnova.Text = "...";
             btnWybierzEnova.UseVisualStyleBackColor = true;
@@ -236,7 +244,7 @@
             // 
             txtSciezkaEnova.Location = new Point(12, 39);
             txtSciezkaEnova.Name = "txtSciezkaEnova";
-            txtSciezkaEnova.Size = new Size(238, 23);
+            txtSciezkaEnova.Size = new Size(369, 23);
             txtSciezkaEnova.TabIndex = 18;
             // 
             // label6
@@ -250,7 +258,7 @@
             // 
             // btnStop
             // 
-            btnStop.Location = new Point(491, 525);
+            btnStop.Location = new Point(201, 525);
             btnStop.Name = "btnStop";
             btnStop.Size = new Size(113, 23);
             btnStop.TabIndex = 20;
@@ -260,9 +268,9 @@
             // 
             // btnPauza
             // 
-            btnPauza.Location = new Point(357, 525);
+            btnPauza.Location = new Point(82, 525);
             btnPauza.Name = "btnPauza";
-            btnPauza.Size = new Size(128, 23);
+            btnPauza.Size = new Size(113, 23);
             btnPauza.TabIndex = 21;
             btnPauza.Text = "PAUZA";
             btnPauza.UseVisualStyleBackColor = true;
@@ -270,7 +278,7 @@
             // 
             // btnWyczyscLogi
             // 
-            btnWyczyscLogi.Location = new Point(604, 441);
+            btnWyczyscLogi.Location = new Point(631, 525);
             btnWyczyscLogi.Name = "btnWyczyscLogi";
             btnWyczyscLogi.Size = new Size(140, 23);
             btnWyczyscLogi.TabIndex = 22;
@@ -280,7 +288,7 @@
             // 
             // btnZapiszLogi
             // 
-            btnZapiszLogi.Location = new Point(781, 441);
+            btnZapiszLogi.Location = new Point(808, 525);
             btnZapiszLogi.Name = "btnZapiszLogi";
             btnZapiszLogi.Size = new Size(140, 23);
             btnZapiszLogi.TabIndex = 23;
@@ -294,10 +302,10 @@
             tabControl1.Controls.Add(zmianaWersji);
             tabControl1.Controls.Add(systemPraw);
             tabControl1.Controls.Add(konwersjaPraw);
-            tabControl1.Location = new Point(12, 312);
+            tabControl1.Location = new Point(12, 300);
             tabControl1.Name = "tabControl1";
             tabControl1.SelectedIndex = 0;
-            tabControl1.Size = new Size(373, 207);
+            tabControl1.Size = new Size(373, 213);
             tabControl1.TabIndex = 24;
             // 
             // dodanieOperatora
@@ -313,7 +321,7 @@
             dodanieOperatora.Location = new Point(4, 24);
             dodanieOperatora.Name = "dodanieOperatora";
             dodanieOperatora.Padding = new Padding(3);
-            dodanieOperatora.Size = new Size(365, 179);
+            dodanieOperatora.Size = new Size(365, 185);
             dodanieOperatora.TabIndex = 0;
             dodanieOperatora.Text = "Dodanie operatora";
             dodanieOperatora.UseVisualStyleBackColor = true;
@@ -324,7 +332,7 @@
             zmianaWersji.Location = new Point(4, 24);
             zmianaWersji.Name = "zmianaWersji";
             zmianaWersji.Padding = new Padding(3);
-            zmianaWersji.Size = new Size(365, 179);
+            zmianaWersji.Size = new Size(361, 185);
             zmianaWersji.TabIndex = 1;
             zmianaWersji.Text = "Zmiana wersji";
             zmianaWersji.UseVisualStyleBackColor = true;
@@ -344,7 +352,7 @@
             systemPraw.Controls.Add(btnSprawdzSystemPraw);
             systemPraw.Location = new Point(4, 24);
             systemPraw.Name = "systemPraw";
-            systemPraw.Size = new Size(365, 179);
+            systemPraw.Size = new Size(361, 185);
             systemPraw.TabIndex = 2;
             systemPraw.Text = "System praw";
             systemPraw.UseVisualStyleBackColor = true;
@@ -361,20 +369,77 @@
             // 
             // konwersjaPraw
             // 
+            konwersjaPraw.Controls.Add(label9);
+            konwersjaPraw.Controls.Add(txtSqlHaslo);
+            konwersjaPraw.Controls.Add(label7);
+            konwersjaPraw.Controls.Add(txtSqlServer);
+            konwersjaPraw.Controls.Add(label8);
+            konwersjaPraw.Controls.Add(txtSqlLogin);
             konwersjaPraw.Controls.Add(textBox1);
             konwersjaPraw.Controls.Add(rbPelnaKonwersja);
             konwersjaPraw.Controls.Add(rbUzgodnijRole);
             konwersjaPraw.Controls.Add(btnKonwersjaPraw);
             konwersjaPraw.Location = new Point(4, 24);
             konwersjaPraw.Name = "konwersjaPraw";
-            konwersjaPraw.Size = new Size(365, 179);
+            konwersjaPraw.Size = new Size(361, 185);
             konwersjaPraw.TabIndex = 3;
             konwersjaPraw.Text = "Konwersja praw";
             konwersjaPraw.UseVisualStyleBackColor = true;
             // 
+            // label9
+            // 
+            label9.AutoSize = true;
+            label9.Location = new Point(3, 70);
+            label9.Name = "label9";
+            label9.Size = new Size(81, 15);
+            label9.TabIndex = 25;
+            label9.Text = "Hasło do SQL:";
+            // 
+            // txtSqlHaslo
+            // 
+            txtSqlHaslo.Location = new Point(101, 67);
+            txtSqlHaslo.Name = "txtSqlHaslo";
+            txtSqlHaslo.Size = new Size(140, 23);
+            txtSqlHaslo.TabIndex = 26;
+            txtSqlHaslo.TextChanged += txtSqlHaslo_TextChanged;
+            // 
+            // label7
+            // 
+            label7.AutoSize = true;
+            label7.Location = new Point(3, 9);
+            label7.Name = "label7";
+            label7.Size = new Size(69, 15);
+            label7.TabIndex = 20;
+            label7.Text = "Serwer SQL:";
+            // 
+            // txtSqlServer
+            // 
+            txtSqlServer.Location = new Point(101, 6);
+            txtSqlServer.Name = "txtSqlServer";
+            txtSqlServer.Size = new Size(140, 23);
+            txtSqlServer.TabIndex = 21;
+            txtSqlServer.TextChanged += txtSqlServer_TextChanged;
+            // 
+            // label8
+            // 
+            label8.AutoSize = true;
+            label8.Location = new Point(3, 38);
+            label8.Name = "label8";
+            label8.Size = new Size(81, 15);
+            label8.TabIndex = 22;
+            label8.Text = "Login do SQL:";
+            // 
+            // txtSqlLogin
+            // 
+            txtSqlLogin.Location = new Point(101, 35);
+            txtSqlLogin.Name = "txtSqlLogin";
+            txtSqlLogin.Size = new Size(140, 23);
+            txtSqlLogin.TabIndex = 23;
+            txtSqlLogin.TextChanged += txtSqlLogin_TextChanged;
+            // 
             // textBox1
             // 
-            textBox1.Location = new Point(131, 12);
+            textBox1.Location = new Point(131, 105);
             textBox1.Name = "textBox1";
             textBox1.Size = new Size(100, 23);
             textBox1.TabIndex = 19;
@@ -384,7 +449,7 @@
             // rbPelnaKonwersja
             // 
             rbPelnaKonwersja.AutoSize = true;
-            rbPelnaKonwersja.Location = new Point(197, 41);
+            rbPelnaKonwersja.Location = new Point(197, 134);
             rbPelnaKonwersja.Name = "rbPelnaKonwersja";
             rbPelnaKonwersja.Size = new Size(110, 19);
             rbPelnaKonwersja.TabIndex = 18;
@@ -396,7 +461,7 @@
             // 
             rbUzgodnijRole.AutoSize = true;
             rbUzgodnijRole.Checked = true;
-            rbUzgodnijRole.Location = new Point(59, 41);
+            rbUzgodnijRole.Location = new Point(59, 134);
             rbUzgodnijRole.Name = "rbUzgodnijRole";
             rbUzgodnijRole.Size = new Size(95, 19);
             rbUzgodnijRole.TabIndex = 17;
@@ -407,7 +472,7 @@
             // 
             // btnKonwersjaPraw
             // 
-            btnKonwersjaPraw.Location = new Point(59, 105);
+            btnKonwersjaPraw.Location = new Point(59, 153);
             btnKonwersjaPraw.Name = "btnKonwersjaPraw";
             btnKonwersjaPraw.Size = new Size(232, 23);
             btnKonwersjaPraw.TabIndex = 16;
@@ -415,11 +480,30 @@
             btnKonwersjaPraw.UseVisualStyleBackColor = true;
             btnKonwersjaPraw.Click += btnKonwersjaPraw_Click;
             // 
+            // progressBar1
+            // 
+            progressBar1.Location = new Point(387, 521);
+            progressBar1.Name = "progressBar1";
+            progressBar1.Size = new Size(238, 23);
+            progressBar1.TabIndex = 25;
+            // 
+            // lblPostep
+            // 
+            lblPostep.AutoSize = true;
+            lblPostep.Location = new Point(387, 547);
+            lblPostep.Name = "lblPostep";
+            lblPostep.Size = new Size(24, 15);
+            lblPostep.TabIndex = 26;
+            lblPostep.Text = "0/0";
+            lblPostep.Click += lblPostep_Click;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(944, 560);
+            ClientSize = new Size(954, 565);
+            Controls.Add(lblPostep);
+            Controls.Add(progressBar1);
             Controls.Add(btnWczytajBazy);
             Controls.Add(tabControl1);
             Controls.Add(clbBazy);
@@ -439,6 +523,7 @@
             Controls.Add(label6);
             Name = "Form1";
             Text = "Form1";
+            Load += Form1_Load;
             tabControl1.ResumeLayout(false);
             dodanieOperatora.ResumeLayout(false);
             dodanieOperatora.PerformLayout();
@@ -487,5 +572,13 @@
         private TextBox textBox1;
         private RadioButton rbPelnaKonwersja;
         private RadioButton rbUzgodnijRole;
+        private Label label9;
+        private TextBox txtSqlHaslo;
+        private Label label7;
+        private TextBox txtSqlServer;
+        private Label label8;
+        private TextBox txtSqlLogin;
+        private ProgressBar progressBar1;
+        private Label lblPostep;
     }
 }

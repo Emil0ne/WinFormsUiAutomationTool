@@ -63,68 +63,72 @@ namespace Automatyczne_Klawisze
             }
         }
 
-        public static void Uruchom(List<string> listaBaz, string login, string haslo, string nowyOperator, string hasloOperatora, string sciezkaXml, string sciezkaEnova, CancellationToken token, ManualResetEventSlim pauseEvent, Action<string> log)
+        public static void Uruchom(List<string> listaBaz, string login, string haslo, string nowyOperator, string hasloOperatora, string sciezkaXml, string sciezkaEnova, CancellationToken token, ManualResetEventSlim pauseEvent, Action<string> log, Action<string> onBazaZakonczona = null)
         {
-            log($"Uruchamianie automatyzacji dla {listaBaz.Count} baz..."); 
+            log($"Uruchamianie dodawania operatorów dla {listaBaz.Count} baz...");
 
-            string plikRaportu = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), $"Raport_Bledow_Enova_{DateTime.Now:yyyyMMdd_HHmmss}.txt");  
-            List<string> bledneBazy = new List<string>();
+            string plikRaportu = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Desktop), $"Raport_Operatorzy_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
+
+            try
+            {
+                string naglowek = $"RAPORT - DODANIE OPERATORÓW\nData rozpoczęcia: {DateTime.Now:yyyy-MM-dd HH:mm:ss}\nLiczba baz: {listaBaz.Count}\n==================================================\n";
+                File.WriteAllText(plikRaportu, naglowek);
+                log($"📁 Utworzono plik raportu na Pulpicie: {Path.GetFileName(plikRaportu)}");
+            }
+            catch (Exception ex)
+            {
+                log($"⚠️ Ostrzeżenie: Nie udało się zainicjalizować pliku raportu: {ex.Message}");
+            }
 
             foreach (var nazwaBazy in listaBaz)
             {
+                string linijkaRaportu = "";
                 try
                 {
                     token.ThrowIfCancellationRequested();
                     pauseEvent.Wait(token);
 
-                    log($"\n==========================================");  
-                    log($"---> ROZPOCZYNAM TEST BAZY: {nazwaBazy} <---");  
-                    log($"==========================================");  
+                    log($"\n==========================================");
+                    log($"---> ROZPOCZYNAM TEST BAZY: {nazwaBazy} <---");
+                    log($"==========================================");
 
                     string powodBledu = "";
                     bool sukces = PrzetworzBaze(nazwaBazy, login, haslo, nowyOperator, hasloOperatora, sciezkaXml, sciezkaEnova, token, pauseEvent, log, out powodBledu);
 
                     if (!sukces)
                     {
-                        bledneBazy.Add($"- {nazwaBazy}: {powodBledu}");
-                        log($"❌ BAZA '{nazwaBazy}' ZAKOŃCZONA BŁĘDEM: {powodBledu}");  
+                        linijkaRaportu = $"{nazwaBazy} - BŁĄD: {powodBledu}";
+                        log($"❌ BAZA '{nazwaBazy}' ZAKOŃCZONA BŁĘDEM: {powodBledu}");
                     }
                     else
                     {
+                        linijkaRaportu = $"{nazwaBazy} - SUKCES";
                         log($"✅ BAZA '{nazwaBazy}' PRZETWORZONA POMYŚLNIE.");
                     }
                 }
                 catch (OperationCanceledException)
                 {
-                    log("\n🛑 AUTOMATYZACJA ZOSTAŁA PRZERWANA NA ŻĄDANIE UŻYTKOWNIKA.");  
+                    log("\n🛑 AUTOMATYZACJA ZOSTAŁA PRZERWANA NA ŻĄDANIE UŻYTKOWNIKA.");
+                    linijkaRaportu = $"{nazwaBazy} - PRZERWANO PRZEZ UŻYTKOWNIKA";
                     break;
                 }
                 catch (Exception ex)
                 {
                     log($"BŁĄD KRYTYCZNY PĘTLI: {ex.Message}");
+                    linijkaRaportu = $"{nazwaBazy} - WYJĄTEK: {ex.Message}";
+                }
+                finally
+                {
+                    if (!string.IsNullOrEmpty(linijkaRaportu))
+                    {
+                        try { File.AppendAllText(plikRaportu, $"[{DateTime.Now:HH:mm:ss}] {linijkaRaportu}\n"); } catch { }
+                    }
+                    onBazaZakonczona?.Invoke(nazwaBazy);
                 }
             }
 
-            log($"\n==========================================");  
-            log($"🏁 ZAKOŃCZONO PRZETWARZANIE WSZYSTKICH BAZ.");  
-
-            if (bledneBazy.Count > 0)
-            {
-                log($"UWAGA: Wystąpiły błędy w {bledneBazy.Count} bazach.");  
-                try
-                {
-                    File.WriteAllLines(plikRaportu, bledneBazy);
-                    log($"Zapisano plik z raportem błędów na Pulpicie: {Path.GetFileName(plikRaportu)}");  
-                }
-                catch (Exception ex)
-                {
-                    log($"Nie udało się zapisać pliku z raportem: {ex.Message}");
-                }
-            }
-            else
-            {
-                log("🎉 WSZYSTKIE BAZY PRZETWORZONE BEZ ANI JEDNEGO BŁĘDU!");
-            }
+            log($"\n==========================================");
+            log($"🏁 ZAKOŃCZONO PRZETWARZANIE WSZYSTKICH BAZ.");
         }
 
         private static bool PrzetworzBaze(string nazwaBazy, string login, string haslo, string nowyOperator, string hasloOperatora, string sciezkaXml, string sciezkaEnova, CancellationToken token, ManualResetEventSlim pauseEvent, Action<string> log, out string powodBledu)
